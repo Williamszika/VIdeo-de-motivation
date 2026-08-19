@@ -21,3 +21,4 @@ __pycache__/
 projet/parties/
 projet/themes.json
 projet/02-audio/transcription.*
+projet/prompts/

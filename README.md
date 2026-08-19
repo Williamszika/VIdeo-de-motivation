@@ -53,10 +53,12 @@ Pour vérifier à tout moment :
 | `./mz ecoute <fichier>` | Transcrit tout, mot par mot (Whisper) |
 | `./mz themes` | Propose un découpage en sujets |
 | *(tu corriges `projet/themes.json`)* | Titres, bornes, ambiances |
+| `./mz images` | Génère les images IA de chaque thème |
 | `./mz decouper` | Taille chaque thème en parties de 5 minutes |
 | `./mz serie` | Produit toutes les vidéos d'un coup |
 
-Détail complet : **[docs/04-SERIE.md](docs/04-SERIE.md)**
+Détail complet : **[docs/04-SERIE.md](docs/04-SERIE.md)** ·
+images IA : **[docs/05-IMAGES-IA.md](docs/05-IMAGES-IA.md)**
 
 ### Outils
 
@@ -103,7 +105,19 @@ Résultat : `projet/02-audio/voix.wav`
 
 Deux possibilités, et tu peux les mélanger.
 
-**Les faire fabriquer par le studio :**
+**Les faire générer par une IA**, à partir du sujet et de l'ambiance de
+chaque thème :
+
+```bash
+export FAL_KEY="ta-cle"      # ou REPLICATE_API_TOKEN, OPENAI_API_KEY…
+./mz images -T               # une image, pour vérifier la clé
+./mz images -n 16
+```
+
+Environ 0,04 $ l'image. Sans clé, ou avec OpenMontage, voir
+**[docs/05-IMAGES-IA.md](docs/05-IMAGES-IA.md)**.
+
+**Ou les faire calculer par le studio**, gratuitement et sans réseau :
 
 ```bash
 ./mz fonds -a braise -n 20 -r 4k
@@ -264,6 +278,9 @@ Format, titres, hashtags, rythme de publication :
 Produire une série entière depuis une longue vidéo :
 **[docs/04-SERIE.md](docs/04-SERIE.md)**
 
+Générer les images par IA :
+**[docs/05-IMAGES-IA.md](docs/05-IMAGES-IA.md)**
+
 ---
 
 ## 9. Droits sur les vidéos sources
@@ -298,9 +315,13 @@ bin/
   mz-brand.sh         signature Mr ZIKA et ses animations
   mz-build.sh         assemblage d'une vidéo
   mz-serie.sh         production de toute une série
+bin/
+  mz-images.sh        images IA par thème
 tools/
   make_signature.py   logo or métallique (Pillow)
   make_backdrop.py    fonds cinématographiques jusqu'en 8K
+  make_prompts.py     rédaction des prompts par thème
+  generer_images.py   génération IA (fal · Replicate · OpenAI · Stability · ComfyUI)
   make_captions.py    sous-titres animés .ass
   transcrire.py       Whisper, horodatage mot à mot
   themes.py           détection et contrôle des thèmes
