@@ -1,0 +1,18 @@
+# --- fichiers de travail lourds : jamais versionnes ---
+projet/01-source/*
+projet/02-audio/*
+projet/03-broll/*
+projet/04-rendu/*
+projet/.cache/
+projet-demo/
+!projet/*/.gitkeep
+
+# --- signature : regeneree par `./mz brand` ---
+assets/brand/*.mov
+assets/brand/*.png
+
+# --- divers ---
+*.log
+.DS_Store
+.venv/
+__pycache__/

@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+# ============================================================
+#   MZ STUDIO  —  chaine de production video motivation
+#   Mr ZIKA · format TikTok 1080x1920 · 5 minutes
+# ============================================================
+MZ_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; export MZ_ROOT
+source "$MZ_ROOT/lib/common.sh"
+source "$MZ_ROOT/lib/grades.sh"
+
+banner() {
+cat <<EOB
+${C_S}${C_Y}
+   ███╗   ███╗ ███████╗     ███████╗ ████████╗ ██╗   ██╗ ██████╗  ██╗  ██████╗
+   ████╗ ████║ ╚══███╔╝     ██╔════╝ ╚══██╔══╝ ██║   ██║ ██╔══██╗ ██║ ██╔═══██╗
+   ██╔████╔██║   ███╔╝      ███████╗    ██║    ██║   ██║ ██║  ██║ ██║ ██║   ██║
+   ██║╚██╔╝██║  ███╔╝       ╚════██║    ██║    ██║   ██║ ██║  ██║ ██║ ██║   ██║
+   ██║ ╚═╝ ██║ ███████╗     ███████║    ██║    ╚██████╔╝ ██████╔╝ ██║ ╚██████╔╝
+   ╚═╝     ╚═╝ ╚══════╝     ╚══════╝    ╚═╝     ╚═════╝  ╚═════╝  ╚═╝  ╚═════╝
+${C_0}${C_D}   videos de motivation · 1080x1920 · 5 minutes · signature Mr ZIKA${C_0}
+EOB
+}
+
+aide() {
+banner
+cat <<EOA
+
+${C_S}LES 5 COMMANDES${C_0}
+
+  ${C_B}mz init${C_0}                 Prepare un nouveau projet (dossiers + script d'exemple)
+  ${C_B}mz audio${C_0} <url|fichier>  Recupere la voix d'une video et la nettoie
+  ${C_B}mz plans${C_0}                Verifie tes images / clips et te dit ce qui manque
+  ${C_B}mz brand${C_0}                Fabrique la signature ${C_S}Mr ZIKA${C_0} et ses animations
+  ${C_B}mz build${C_0}                Assemble la video finale, prete a publier
+
+${C_S}AUTRES${C_0}
+
+  ${C_B}mz looks${C_0}                Liste les etalonnages disponibles
+  ${C_B}mz demo${C_0}                 Fabrique une video de demonstration (sans rien telecharger)
+  ${C_B}mz doctor${C_0}               Verifie que tout est installe
+
+${C_S}LE CHEMIN LE PLUS COURT${C_0}
+
+  ${C_D}1.${C_0}  ./install.sh
+  ${C_D}2.${C_0}  ./mz init
+  ${C_D}3.${C_0}  ./mz audio "https://youtu.be/…"  -d 00:00:20 -t 300
+  ${C_D}4.${C_0}  ${C_D}depose 10 a 20 images / clips dans${C_0} projet/03-broll/
+  ${C_D}5.${C_0}  ${C_D}ecris ton texte dans${C_0} projet/script.txt
+  ${C_D}6.${C_0}  ./mz brand
+  ${C_D}7.${C_0}  ./mz build -l fire -x fort
+
+  ${C_D}Chaque commande accepte -h pour son aide detaillee.${C_0}
+
+EOA
+}
+
+cmd_init() {
+  step "Preparation du projet"
+  mkdir -p "$MZ_ROOT/projet"/{01-source,02-audio,03-broll,04-rendu}
+  if [ ! -f "$MZ_ROOT/projet/script.txt" ]; then
+    cp "$MZ_ROOT/presets/script-exemple.txt" "$MZ_ROOT/projet/script.txt" 2>/dev/null || \
+    cat > "$MZ_ROOT/projet/script.txt" <<'EOT'
+Ecris ici le texte qui s'affichera a l'ecran.
+Un *mot entre asterisques* apparait en dore.
+EOT
+    ok "projet/script.txt cree"
+  else
+    hint "projet/script.txt existe deja — conserve"
+  fi
+  for d in 01-source 02-audio 03-broll 04-rendu; do
+    printf '  %-12s %s\n' "$d/" "$(ls -1 "$MZ_ROOT/projet/$d" 2>/dev/null | wc -l) fichier(s)"
+  done
+  echo
+  ok "Projet pret."
+  hint "Suite :  ./mz audio \"<url youtube>\"   puis remplis projet/03-broll/"
+}
+
+cmd_plans() {
+  local D="${1:-$MZ_ROOT/projet/03-broll}"
+  [ -d "$D" ] || die "Dossier introuvable : $D"
+  step "Etat de tes plans — $D"
+  local n=0 img=0 vid=0 bad=0
+  while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    local k; k=$(mz_kind "$f")
+    local wh; wh=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0:s=x "$f" 2>/dev/null)
+    local dur=""; [ "$k" = "video" ] && dur="  $(mz_hms "$(mz_duration "$f")")"
+    case "$k" in
+      image) img=$((img+1));; video) vid=$((vid+1));; *) bad=$((bad+1));;
+    esac
+    n=$((n+1))
+    printf '  %-42s %-7s %-11s%s\n' "$(basename "$f" | cut -c1-42)" "$k" "$wh" "$dur"
+    # avertit si la definition est trop faible pour du 1080x1920
+    awk -v wh="$wh" 'BEGIN{split(wh,a,"x"); if (a[1] && (a[1]<1080 || a[2]<1080)) print "     ▲ definition faible : ca sera flou une fois recadre en vertical"}'
+  done < <(find "$D" -maxdepth 1 -type f \
+      \( -iname '*.jpg' -o -iname '*.jpeg' -o -iname '*.png' -o -iname '*.webp' \
+         -o -iname '*.mp4' -o -iname '*.mov' -o -iname '*.mkv' -o -iname '*.webm' -o -iname '*.m4v' \) \
+      | LC_ALL=C sort)
+  echo
+  printf '  total : %s  (%s image(s), %s clip(s))\n' "$n" "$img" "$vid"
+  if [ "$n" -eq 0 ]; then
+    warn "Aucun plan. Lis docs/01-GUIDE-TOURNAGE.md pour savoir quoi filmer / trouver."
+  elif [ "$n" -lt 8 ]; then
+    warn "Moins de 8 plans : la video va tourner en boucle et se voir. Vise 15 a 25."
+  else
+    ok "De quoi tenir 5 minutes sans lasser."
+  fi
+  awk -v n="$n" 'BEGIN{ if (n>0) printf "  a 6 s par plan, %d plans couvrent %.1f min avant de reboucler.\n", n, n*6/60 }'
+}
+
+cmd_looks() {
+  step "Etalonnages disponibles  (option -l de mz build)"
+  for g in $(mz_grades_list); do
+    printf '  %s%-13s%s %s\n' "$C_S" "$g" "$C_0" "$(mz_look_desc "$g")"
+  done
+  echo
+  hint "Textures (option -x) : aucun · doux · normal · fort"
+  hint "Transitions (option -T) : coupe · flash · noir · fondu"
+}
+
+cmd_doctor() {
+  step "Verification de l'installation"
+  local ko=0
+  for t in ffmpeg ffprobe python3; do
+    if command -v "$t" >/dev/null 2>&1; then
+      printf '  %s✔%s %-10s %s\n' "$C_G" "$C_0" "$t" "$($t -version 2>&1 | head -1 | cut -c1-52)"
+    else
+      printf '  %s✖%s %-10s manquant\n' "$C_R" "$C_0" "$t"; ko=1
+    fi
+  done
+  if command -v yt-dlp >/dev/null 2>&1; then
+    printf '  %s✔%s %-10s %s\n' "$C_G" "$C_0" "yt-dlp" "$(yt-dlp --version 2>/dev/null)"
+  else
+    printf '  %s▲%s %-10s absent — necessaire seulement pour les URL YouTube\n' "$C_Y" "$C_0" "yt-dlp"
+  fi
+  python3 -c "import PIL" 2>/dev/null \
+    && printf '  %s✔%s %-10s\n' "$C_G" "$C_0" "pillow" \
+    || { printf '  %s✖%s %-10s manquant (pip install pillow)\n' "$C_R" "$C_0" "pillow"; ko=1; }
+  python3 -c "import numpy" 2>/dev/null \
+    && printf '  %s✔%s %-10s\n' "$C_G" "$C_0" "numpy" \
+    || { printf '  %s✖%s %-10s manquant (pip install numpy)\n' "$C_R" "$C_0" "numpy"; ko=1; }
+
+  echo
+  printf '  police titres      : %s\n' "$(mz_font_display)"
+  printf '  police sous-titres : %s\n' "$(mz_font_subs)"
+  local miss=""
+  for f in libass libfreetype libx264; do
+    ffmpeg -hide_banner -version 2>/dev/null | grep -q -- "--enable-$f" || miss="$miss $f"
+  done
+  [ -n "$miss" ] && { warn "ffmpeg compile sans :$miss — sous-titres ou encodage indisponibles"; ko=1; } \
+                 || ok "ffmpeg complet (libass, freetype, x264)"
+  echo
+  [ -f "$MZ_BRAND/signature_big.png" ] && ok "signature Mr ZIKA generee" \
+                                       || hint "signature pas encore generee — lance : ./mz brand"
+  [ "$ko" = "0" ] && ok "Tout est en place." || die "Il manque des choses — lance ./install.sh"
+}
+
+cmd_demo() {
+  need ffmpeg
+  step "Demonstration — fabrication d'images et d'une voix de test"
+  local D="$MZ_ROOT/projet-demo"
+  rm -rf "$D"; mkdir -p "$D"/{02-audio,03-broll,04-rendu}
+  python3 "$MZ_TOOLS/make_demo.py" --outdir "$D/03-broll" --n 12 || die "Demo impossible"
+  # voix de synthese : un bourdon module, juste pour valider la chaine
+  ffmpeg -y -v error -f lavfi -i "sine=frequency=140:duration=${1:-30}" \
+    -af "vibrato=f=5:d=0.6,tremolo=f=2.5:d=0.7,volume=-6dB" \
+    -ac 2 -ar "$MZ_SR" "$D/02-audio/voix.wav" || die "Voix de test impossible"
+  cat > "$D/script.txt" <<'EOT'
+Personne ne viendra te sauver.
+C'est *toi* qui decides, maintenant.
+Chaque matin tu as le choix.
+Te plaindre, ou *avancer*.
+La *discipline* pese des grammes.
+Le regret pese des tonnes.
+Leve-toi. *Encore une fois.*
+EOT
+  ok "12 plans de test + voix + script generes dans projet-demo/"
+  hint "Lance :  ./mz build -b projet-demo/03-broll -a projet-demo/02-audio/voix.wav \\"
+  hint "                   -s projet-demo/script.txt -d ${1:-30} -p 5"
+}
+
+CMD="${1:-}"; [ $# -gt 0 ] && shift
+case "$CMD" in
+  init)    cmd_init "$@" ;;
+  audio)   bash "$MZ_ROOT/bin/mz-audio.sh" "$@" ;;
+  brand)   bash "$MZ_ROOT/bin/mz-brand.sh" "$@" ;;
+  build)   bash "$MZ_ROOT/bin/mz-build.sh" "$@" ;;
+  plans)   cmd_plans "$@" ;;
+  looks)   cmd_looks "$@" ;;
+  doctor)  cmd_doctor "$@" ;;
+  demo)    cmd_demo "$@" ;;
+  ""|-h|--help|aide|help) aide ;;
+  *) printf '%sCommande inconnue : %s%s\n\n' "$C_R" "$CMD" "$C_0"; aide; exit 1 ;;
+esac
