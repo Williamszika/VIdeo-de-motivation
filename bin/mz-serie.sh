@@ -70,6 +70,8 @@ assure_signature() {
   return 0
 }
 
+CACHE_SERIE="$MZ_ROOT/projet/.cache/journaux"
+mkdir -p "$CACHE_SERIE"
 mapfile -t LIGNES < <(grep -v '^#' "$PLAN" | grep -v '^[[:space:]]*$')
 [ ${#LIGNES[@]} -gt 0 ] || die "La feuille de route est vide."
 
@@ -139,14 +141,21 @@ for L in "${LIGNES[@]}"; do
 
   # --- 4. le montage
   say "montage — $LOOK / $TEX / $TRANS, plans de ${PSEC}s"
-  if bash "$MZ_ROOT/bin/mz-build.sh" \
+  # On garde le statut du montage a part : avec pipefail, juger un « if » sur
+  # un pipeline (build | grep | tail) fait passer un succes pour un echec des
+  # que grep ne trouve rien a afficher.
+  JOURNAL="$CACHE_SERIE/${ID}-p${PARTIE}.log"
+  bash "$MZ_ROOT/bin/mz-build.sh" \
        -a "$VOIX" -b "$BROLL" -s "$SRT" -o "$RENDU" \
        -d "$(printf '%.0f' "$DUREE")" -l "$LOOK" -x "$TEX" -T "$TRANS" \
-       -p "$PSEC" -q "$CRF" 2>&1 | grep -vE '^frame=|fps=' | tail -3; then
+       -p "$PSEC" -q "$CRF" > "$JOURNAL" 2>&1
+  ETAT=$?
+  grep -vE '^frame=|fps=|^[[:space:]]*$' "$JOURNAL" | tail -3
+  if [ "$ETAT" -eq 0 ] && [ -s "$RENDU" ]; then
     ok "$(basename "$RENDU")  ·  $(du -h "$RENDU" 2>/dev/null | cut -f1)"
     FAITES=$((FAITES+1))
   else
-    warn "montage rate pour $ID partie $PARTIE"
+    warn "montage rate pour $ID partie $PARTIE — detail : $JOURNAL"
     RATEES=$((RATEES+1))
   fi
 done

@@ -44,11 +44,16 @@ else
   installe ffmpeg || die "Installe ffmpeg a la main : https://ffmpeg.org/download.html"
   command -v ffmpeg >/dev/null 2>&1 && ok "ffmpeg installe" || die "ffmpeg toujours absent"
 fi
-MANQUE=""
-for f in libass libfreetype libx264; do
-  ffmpeg -hide_banner -version 2>/dev/null | grep -q -- "--enable-$f" || MANQUE="$MANQUE $f"
-done
-[ -n "$MANQUE" ] && warn "ton ffmpeg n'a pas :$MANQUE — sous-titres ou encodage limites"
+MANQUE=$(mz_capacites_manquantes)
+if [ -n "$MANQUE" ]; then
+  warn "ton ffmpeg ne sait pas faire :$MANQUE"
+  case "$SYS" in
+    brew) hint "brew install ffmpeg   puis verifie :  which -a ffmpeg" ;;
+    *)    hint "installe un ffmpeg complet pour ton systeme" ;;
+  esac
+else
+  ok "ffmpeg sait tout faire (sous-titres, texte, mouvement, x264, aac)"
+fi
 
 # ---------------------------------------------------------------
 # 3. Python : pillow, numpy, yt-dlp
@@ -87,7 +92,8 @@ recupere() {
   if command -v curl >/dev/null 2>&1; then curl -sSL -A "$UA" -o "$dest" "$url"
   elif command -v wget >/dev/null 2>&1; then wget -q -U "$UA" -O "$dest" "$url"
   else warn "ni curl ni wget"; return 1; fi
-  if [ -s "$dest" ] && head -c4 "$dest" | grep -qE $'\x00\x01\x00\x00|OTTO|true|ttcf'; then
+  local entete=""; [ -s "$dest" ] && entete=$(head -c4 "$dest" 2>/dev/null)
+  if [ -s "$dest" ] && grep -qE $'\x00\x01\x00\x00|OTTO|true|ttcf' <<< "$entete"; then
     ok "$2"
   else
     rm -f "$dest"; warn "$2 non telechargee — une police systeme sera utilisee"

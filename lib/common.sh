@@ -48,6 +48,33 @@ need() {
 
 need_file() { [ -f "$1" ] || die "Fichier introuvable : $1"; }
 
+# On teste ce que ffmpeg SAIT FAIRE, pas ce que sa ligne de configuration
+# raconte : les builds Homebrew, static ou distribution ne l'ecrivent pas
+# toutes pareil, et un filtre present passait pour absent.
+# Attention : PAS de « ffmpeg | grep -q » ici. Avec `set -o pipefail`,
+# grep -q sort des la premiere correspondance, ffmpeg recoit un SIGPIPE et
+# le pipeline renvoie un echec ALORS MEME que le filtre a ete trouve.
+# On memorise donc les listes une fois, et on cherche dedans sans pipe.
+mz_filtre() {
+  [ -n "${_MZ_FILTRES:-}" ] || _MZ_FILTRES=$(ffmpeg -hide_banner -filters 2>/dev/null)
+  grep -qE "^ [.TSC]+ +$1 " <<< "$_MZ_FILTRES"
+}
+mz_encodeur() {
+  [ -n "${_MZ_ENCODEURS:-}" ] || _MZ_ENCODEURS=$(ffmpeg -hide_banner -encoders 2>/dev/null)
+  grep -qE "^ [VAS][.FSXBD]+ $1 " <<< "$_MZ_ENCODEURS"
+}
+
+# Renvoie la liste des capacites manquantes, vide si tout va bien.
+mz_capacites_manquantes() {
+  local manque=""
+  mz_filtre subtitles || manque="$manque sous-titres(libass)"
+  mz_filtre drawtext  || manque="$manque texte(freetype)"
+  mz_filtre zoompan   || manque="$manque mouvement(zoompan)"
+  mz_encodeur libx264 || manque="$manque encodage(x264)"
+  mz_encodeur aac     || manque="$manque son(aac)"
+  printf '%s' "$manque"
+}
+
 # ---------- Sondes media ----------
 # duree d'un fichier en secondes (decimal)
 mz_duration() {

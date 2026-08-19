@@ -141,7 +141,10 @@ cmd_doctor() {
   local ko=0
   for t in ffmpeg ffprobe python3; do
     if command -v "$t" >/dev/null 2>&1; then
-      printf '  %s✔%s %-10s %s\n' "$C_G" "$C_0" "$t" "$($t -version 2>&1 | head -1 | cut -c1-52)"
+      case "$t" in python3) V=$(python3 --version 2>&1) ;;
+                   *)       V=$("$t" -version 2>&1 | head -1) ;; esac
+      printf '  %s✔%s %-10s %s\n' "$C_G" "$C_0" "$t" "$(printf '%s' "$V" | cut -c1-46)"
+      printf '  %s  %-10s %s\n' "$C_D" "" "$(command -v "$t")$C_0"
     else
       printf '  %s✖%s %-10s manquant\n' "$C_R" "$C_0" "$t"; ko=1
     fi
@@ -164,12 +167,34 @@ cmd_doctor() {
   echo
   printf '  police titres      : %s\n' "$(mz_font_display)"
   printf '  police sous-titres : %s\n' "$(mz_font_subs)"
-  local miss=""
-  for f in libass libfreetype libx264; do
-    ffmpeg -hide_banner -version 2>/dev/null | grep -q -- "--enable-$f" || miss="$miss $f"
+  echo
+  printf '  %scapacites de ffmpeg%s\n' "$C_S" "$C_0"
+  for c in "subtitles:sous-titres graves" "drawtext:texte incruste" \
+           "zoompan:mouvement de camera" "gblur:halo cinema" "noise:grain"; do
+    f="${c%%:*}"; libelle="${c#*:}"
+    mz_filtre "$f" && printf '    %s✔%s %-22s %s\n' "$C_G" "$C_0" "$libelle" "$f" \
+                   || printf '    %s✖%s %-22s %s manquant\n' "$C_R" "$C_0" "$libelle" "$f"
   done
-  [ -n "$miss" ] && { warn "ffmpeg compile sans :$miss — sous-titres ou encodage indisponibles"; ko=1; } \
-                 || ok "ffmpeg complet (libass, freetype, x264)"
+  for c in "libx264:encodage video" "aac:encodage audio"; do
+    e="${c%%:*}"; libelle="${c#*:}"
+    mz_encodeur "$e" && printf '    %s✔%s %-22s %s\n' "$C_G" "$C_0" "$libelle" "$e" \
+                     || printf '    %s✖%s %-22s %s manquant\n' "$C_R" "$C_0" "$libelle" "$e"
+  done
+  MANQUE=$(mz_capacites_manquantes)
+  echo
+  if [ -n "$MANQUE" ]; then
+    warn "ton ffmpeg ne sait pas faire :$MANQUE"
+    case "$(uname -s)" in
+      Darwin) hint "Sur Mac, la version Homebrew a tout. Installe-la et mets-la devant :"
+              hint "  brew install ffmpeg"
+              hint "  which -a ffmpeg          # regarde laquelle est trouvee en premier"
+              hint "  export PATH=\"\$(brew --prefix)/bin:\$PATH\"" ;;
+      Linux)  hint "  sudo apt-get install -y ffmpeg     (ou dnf / pacman)" ;;
+    esac
+    ko=1
+  else
+    ok "ffmpeg sait tout faire"
+  fi
   echo
   [ -f "$MZ_BRAND/signature_big.png" ] && ok "signature Mr ZIKA generee" \
                                        || hint "signature pas encore generee — lance : ./mz brand"
