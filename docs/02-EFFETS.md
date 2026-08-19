@@ -108,10 +108,14 @@ des photos fixes.
 
 | Valeur | Effet | Quand |
 |---|---|---|
-| `coupe` | Coupe franche | Rythme rapide, plans courts (`-p 4`) |
+| `coupe` | Coupe franche, aucun fondu | **Par défaut.** C'est ce que fait le format court : maximum d'énergie, zéro clignotement |
 | `flash` | Éclair blanc de 0,09 s | Percussif. Cale-le sur la musique |
-| `noir` | Passage au noir de 0,14 s | Sépare deux idées |
-| `fondu` | Fondu de 0,30 s | Par défaut. Le plus posé, le plus premium |
+| `fondu` | Passage au noir de 0,16 s | Adoucit sans casser le rythme |
+| `noir` | Passage au noir de 0,24 s | Marque une respiration entre deux idées |
+
+> `fondu` et `noir` passent réellement **par le noir** à chaque raccord.
+> Avec des plans courts (`-p 4`), ça finit par clignoter : reste sur `coupe`.
+> Plus les plans sont longs (`-p 8` et plus), plus le fondu se justifie.
 
 ```bash
 ./mz build -T flash -p 4.5     # nerveux

@@ -190,7 +190,7 @@ def main():
                 tid, f"{k:02d}", f"{x:.2f}", f"{y-x:.2f}", base + ".srt",
                 t.get("ambiance", "aube_froide"), t.get("look", "ice"),
                 t.get("palette", "or"), str(t.get("plan_sec", 6)),
-                t.get("texture", "normal"), t.get("transition", "fondu"),
+                t.get("texture", "normal"), t.get("transition", "coupe"),
                 titre.replace("\t", " "),
             ])
             marque = "  (courte)" if y - x < 150 else ""

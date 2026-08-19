@@ -165,7 +165,7 @@ def cmd_proposer(args):
             "palette": "or",
             "plan_sec": 6,
             "texture": "normal",
-            "transition": "fondu",
+            "transition": "coupe",
         })
 
     sortie = {"source": d.get("source", ""), "duree": d["duree"],

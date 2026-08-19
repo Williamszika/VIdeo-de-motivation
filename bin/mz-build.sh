@@ -27,7 +27,7 @@ OPTIONS
   -d <sec>      Duree exacte              (defaut 300 = 5 min ; "auto" = duree de la voix)
   -l <look>     orange_teal ice fire gold noir cyber raw   (defaut orange_teal)
   -x <texture>  aucun doux normal fort                     (defaut normal)
-  -T <transi>   coupe flash noir fondu                     (defaut fondu)
+  -T <transi>   coupe flash noir fondu                     (defaut coupe)
   -p <sec>      Duree d'un plan                            (defaut 6)
   -v <vol>      Volume de la musique en dB                 (defaut -19)
   -f <taille>   Taille des sous-titres en px               (defaut 112)
@@ -50,7 +50,7 @@ BROLL="$MZ_ROOT/projet/03-broll"
 SCRIPT="$MZ_ROOT/projet/script.txt"
 SORTIE=""
 DUREE="$MZ_DUR"
-LOOK="orange_teal"; TEXTURE="normal"; TRANSI="fondu"
+LOOK="orange_teal"; TEXTURE="normal"; TRANSI="coupe"
 SEG="6"; MVOL="-19"; SUBSZ="112"; SUBW="3"
 FILIGRANE="1"; CRF="19"; NOSUBS=0; NOBRAND=0; REFAIRE=0
 
@@ -114,7 +114,7 @@ GRADE=$(mz_grade "$LOOK")
 TEXT=$(mz_fx_texture "$TEXTURE")
 hint "look : $LOOK — $(mz_look_desc "$LOOK")"
 
-case "$TRANSI" in coupe|flash|noir|fondu) ;; *) TRANSI="fondu" ;; esac
+case "$TRANSI" in coupe|flash|noir|fondu) ;; *) TRANSI="coupe" ;; esac
 
 # ---------------------------------------------------------------
 step "1/5  Fabrication des $NSEG plans (etalonnage $LOOK, texture $TEXTURE)"
@@ -172,14 +172,14 @@ PUNCH="scale=w='${MZ_W}*(1+0.035*max(0,1-t/0.32))':h='${MZ_H}*(1+0.035*max(0,1-t
 
 OUTFADE=""
 case "$TRANSI" in
-  noir)  OUTFADE=",fade=t=out:st=$(awk -v s="$SEG" 'BEGIN{printf "%.2f", s-0.14}'):d=0.14:color=black" ;;
-  fondu) OUTFADE=",fade=t=out:st=$(awk -v s="$SEG" 'BEGIN{printf "%.2f", s-0.30}'):d=0.30:color=black" ;;
+  noir)  OUTFADE=",fade=t=out:st=$(awk -v s="$SEG" 'BEGIN{printf "%.2f", s-0.24}'):d=0.24:color=black" ;;
+  fondu) OUTFADE=",fade=t=out:st=$(awk -v s="$SEG" 'BEGIN{printf "%.2f", s-0.16}'):d=0.16:color=black" ;;
 esac
 INFADE=""
 case "$TRANSI" in
   flash) INFADE=",fade=t=in:st=0:d=0.09:color=white" ;;
-  noir)  INFADE=",fade=t=in:st=0:d=0.14:color=black" ;;
-  fondu) INFADE=",fade=t=in:st=0:d=0.30:color=black" ;;
+  noir)  INFADE=",fade=t=in:st=0:d=0.24:color=black" ;;
+  fondu) INFADE=",fade=t=in:st=0:d=0.16:color=black" ;;
 esac
 
 ffmpeg -y -v error "${INARGS[@]}" -filter_complex "
