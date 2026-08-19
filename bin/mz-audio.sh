@@ -145,7 +145,6 @@ if [ ${#CUTARGS[@]} -gt 0 ]; then
 else
   mz_ff "Conversion" ffmpeg -y -v error -i "$RAW" \
         -vn -ac 2 -ar "$MZ_SR" -c:a pcm_s16le "$CUT" || die "Conversion impossible"
-  cp /dev/null /dev/null
 fi
 ok "Segment retenu : $(mz_hms "$(mz_duration "$CUT")")"
 

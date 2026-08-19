@@ -110,14 +110,7 @@ GRADE=$(mz_grade "$LOOK")
 TEXT=$(mz_fx_texture "$TEXTURE")
 hint "look : $LOOK — $(mz_look_desc "$LOOK")"
 
-# entree/sortie de chaque plan selon la transition choisie
-case "$TRANSI" in
-  coupe) TR_IN=""; TR_OUT="" ;;
-  flash) TR_IN="fade=t=in:st=0:d=0.09:color=white"; TR_OUT="" ;;
-  noir)  TR_IN="fade=t=in:st=0:d=0.14:color=black"
-         TR_OUT="fade=t=out:st=\$(awk -v s=\$SEG 'BEGIN{printf \"%.2f\", s-0.14}'):d=0.14:color=black" ;;
-  *)     TRANSI="fondu"; TR_IN="fade=t=in:st=0:d=0.30:color=black"; TR_OUT="fondu" ;;
-esac
+case "$TRANSI" in coupe|flash|noir|fondu) ;; *) TRANSI="fondu" ;; esac
 
 # ---------------------------------------------------------------
 step "1/5  Fabrication des $NSEG plans (etalonnage $LOOK, texture $TEXTURE)"

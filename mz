@@ -164,14 +164,11 @@ cmd_demo() {
   ffmpeg -y -v error -f lavfi -i "sine=frequency=140:duration=${1:-30}" \
     -af "vibrato=f=5:d=0.6,tremolo=f=2.5:d=0.7,volume=-6dB" \
     -ac 2 -ar "$MZ_SR" "$D/02-audio/voix.wav" || die "Voix de test impossible"
+  cp "$MZ_ROOT/presets/script-exemple.txt" "$D/script.txt" 2>/dev/null || \
   cat > "$D/script.txt" <<'EOT'
 Personne ne viendra te sauver.
-C'est *toi* qui decides, maintenant.
-Chaque matin tu as le choix.
-Te plaindre, ou *avancer*.
-La *discipline* pese des grammes.
-Le regret pese des tonnes.
-Leve-toi. *Encore une fois.*
+C'est *toi* qui décides, maintenant.
+Lève-toi. *Encore une fois.*
 EOT
   ok "12 plans de test + voix + script generes dans projet-demo/"
   hint "Lance :  ./mz build -b projet-demo/03-broll -a projet-demo/02-audio/voix.wav \\"

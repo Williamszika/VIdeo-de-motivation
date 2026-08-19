@@ -116,7 +116,9 @@ def time_chunks(chunks, duration, segments=None, gap=0.06,
             t = s
             for c, cw in zip(part, pw):
                 d = max(minimum, (e - s) * cw / tw)
-                out.append((c, t, min(e, t + d)))
+                # le rythme suit la parole, mais un groupe de mots ne reste
+                # jamais fige plus de `maximum` : sinon ca donne une video morte
+                out.append((c, t, min(e, t + min(d, maximum))))
                 t += d
         for c in chunks[qi:]:                      # reliquat
             last = out[-1][2] if out else 0.0
@@ -172,7 +174,8 @@ def render_line(chunk, accent, entry, cx, cy, keyword_scale=1.0):
 
     def repl(m):
         word = m.group(1)
-        s = f"{{\\c{accent}"
+        # les balises en ligne veulent une couleur fermee par &
+        s = f"{{\\c{accent}&"
         if keyword_scale != 1.0:
             s += f"\\fscx{int(100*keyword_scale)}\\fscy{int(100*keyword_scale)}"
         s += "}" + word + "{\\c&H00FFFFFF&"
@@ -185,20 +188,25 @@ def render_line(chunk, accent, entry, cx, cy, keyword_scale=1.0):
     return "{\\an5\\pos(%d,%d)%s}%s" % (cx, cy, tags, body)
 
 
+TC = re.compile(r"(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})\s*-->\s*"
+                r"(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})")
+
+
 def parse_srt(path):
-    txt = open(path, encoding="utf-8-sig").read()
+    """Lit un .srt (Whisper, YouTube…). Tout ce qui suit la ligne de
+    chronometrage, dans le meme bloc, est le texte."""
     out = []
-    for blk in re.split(r"\n\s*\n", txt.strip()):
-        m = re.search(r"(\d{2}):(\d{2}):(\d{2})[,.](\d{3})\s*-->\s*"
-                      r"(\d{2}):(\d{2}):(\d{2})[,.](\d{3})", blk)
-        if not m:
+    for blk in re.split(r"\n\s*\n", open(path, encoding="utf-8-sig").read().strip()):
+        lignes = blk.split("\n")
+        idx = next((i for i, l in enumerate(lignes) if TC.search(l)), None)
+        if idx is None:
             continue
-        g = [int(x) for x in m.groups()]
+        g = [int(x) for x in TC.search(lignes[idx]).groups()]
         a = g[0]*3600 + g[1]*60 + g[2] + g[3]/1000
         b = g[4]*3600 + g[5]*60 + g[6] + g[7]/1000
-        body = " ".join(l.strip() for l in blk.split("\n")[m.string[:m.start()].count("\n")+1:] if l.strip())
+        body = " ".join(l.strip() for l in lignes[idx + 1:] if l.strip())
         body = re.sub(r"<[^>]+>", "", body).strip()
-        if body:
+        if body and b > a:
             out.append((body, a, b))
     return out
 
@@ -264,9 +272,20 @@ def main():
         f.write(head + "\n".join(lines) + "\n")
 
     span = timed[-1][2] - timed[0][1] if timed else 0
+    affiche = sum(b - a for _, a, b in timed)
     print(f"sous-titres : {args.out}")
     print(f"  {len(timed)} groupes de mots, police {fontname} {args.size}px")
     print(f"  couverture : {span/60:.1f} min" + ("  (cale sur la voix)" if args.audio else ""))
+
+    # un script trop court laisse de longs passages sans texte a l'ecran
+    cible = span if args.srt else args.duration
+    if cible > 0 and affiche < cible * 0.55:
+        mots = sum(len(c.split()) for c, _, _ in timed)
+        # un debit parle normal tourne autour de 130 a 150 mots par minute
+        bas, haut = int(cible / 60 * 130), int(cible / 60 * 150)
+        print(f"  ATTENTION : du texte n'est affiche que {affiche/cible*100:.0f}% du temps.")
+        print(f"  Ton script fait {mots} mots. Pour {cible/60:.0f} min de parole,")
+        print(f"  ecris ce qui est reellement dit : compte {bas} a {haut} mots.")
 
 
 if __name__ == "__main__":
