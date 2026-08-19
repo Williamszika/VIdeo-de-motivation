@@ -1,9 +1,13 @@
 # MZ STUDIO — vidéos de motivation · **Mr ZIKA**
 
 Chaîne de production complète pour fabriquer des vidéos de motivation
-**verticales 1080×1920, exactement 5 minutes, prêtes pour TikTok**, avec
-étalonnage cinéma, grain argentique, halo lumineux, sous-titres animés et
-la signature **Mr ZIKA** en or animé.
+**verticales 1080×1920, 5 minutes, prêtes pour TikTok**, avec étalonnage
+cinéma, grain argentique, halo lumineux, sous-titres animés et la signature
+**Mr ZIKA** en or animé.
+
+Tu peux aussi lui donner **une conférence d'une heure** : il l'écoute, la
+découpe en thèmes, fabrique les images de chaque ambiance, et ressort **une
+série de vidéos de 5 minutes**, une par sujet.
 
 Tout tourne avec **ffmpeg** et **Python**. Pas d'abonnement, pas de logiciel
 propriétaire, pas de filigrane imposé. Les effets reproduisent ce que tu
@@ -30,15 +34,39 @@ Pour vérifier à tout moment :
 
 ---
 
-## 2. Les 5 commandes
+## 2. Les commandes
+
+### A. Une vidéo, tu sais déjà ce que tu veux
 
 | Commande | Ce qu'elle fait |
 |---|---|
 | `./mz init` | Prépare les dossiers du projet |
 | `./mz audio <url ou fichier>` | Récupère la voix, la nettoie, la calibre |
-| `./mz plans` | Vérifie tes images / clips et te dit ce qui manque |
+| `./mz fonds` | Fabrique des images de fond cinématographiques |
 | `./mz brand` | Fabrique la signature **Mr ZIKA** et ses animations |
 | `./mz build` | Assemble la vidéo finale |
+
+### B. Une longue vidéo à découper en série
+
+| Commande | Ce qu'elle fait |
+|---|---|
+| `./mz ecoute <fichier>` | Transcrit tout, mot par mot (Whisper) |
+| `./mz themes` | Propose un découpage en sujets |
+| *(tu corriges `projet/themes.json`)* | Titres, bornes, ambiances |
+| `./mz decouper` | Taille chaque thème en parties de 5 minutes |
+| `./mz serie` | Produit toutes les vidéos d'un coup |
+
+Détail complet : **[docs/04-SERIE.md](docs/04-SERIE.md)**
+
+### Outils
+
+| Commande | Ce qu'elle fait |
+|---|---|
+| `./mz plans` | Vérifie tes images / clips et te dit ce qui manque |
+| `./mz looks` | Liste les étalonnages |
+| `./mz ambiances` | Liste les ambiances de fond |
+| `./mz demo` | Vidéo de démonstration, sans rien télécharger |
+| `./mz doctor` | Vérifie l'installation |
 
 Chaque commande accepte `-h` pour son aide détaillée.
 
@@ -73,7 +101,22 @@ Résultat : `projet/02-audio/voix.wav`
 
 ### Étape 3 — les images
 
-Dépose 15 à 25 fichiers dans `projet/03-broll/` (JPG, PNG, MP4, MOV…).
+Deux possibilités, et tu peux les mélanger.
+
+**Les faire fabriquer par le studio :**
+
+```bash
+./mz fonds -a braise -n 20 -r 4k
+```
+
+Sept ambiances (`./mz ambiances`) : ciels volumétriques, brume en couches,
+rayons de lumière, crêtes de montagne, villes, silhouettes, poussière dans la
+lumière. Tout est calculé — donc **original, sans aucun droit à vérifier**, et
+disponible jusqu'en 4320×7680. Ce ne sont pas des photos : c'est de l'image
+cinématographique abstraite, et ça tient très bien derrière du texte.
+
+**Ou déposer les tiennes** : 15 à 25 fichiers dans `projet/03-broll/`
+(JPG, PNG, MP4, MOV…).
 
 **Comment les obtenir et comment filmer les tiens :
 → [docs/01-GUIDE-TOURNAGE.md](docs/01-GUIDE-TOURNAGE.md)**
@@ -218,6 +261,9 @@ Pour un aperçu rapide pendant les essais : `-d 30 -q 26`.
 Format, titres, hashtags, rythme de publication :
 **[docs/03-TIKTOK.md](docs/03-TIKTOK.md)**
 
+Produire une série entière depuis une longue vidéo :
+**[docs/04-SERIE.md](docs/04-SERIE.md)**
+
 ---
 
 ## 9. Droits sur les vidéos sources
@@ -247,20 +293,29 @@ lib/
   grades.sh           étalonnages et effets (le cœur du rendu)
 bin/
   mz-audio.sh         extraction + mastering de la voix
+  mz-ecoute.sh        transcription Whisper mot à mot
+  mz-fonds.sh         génération des images de fond
   mz-brand.sh         signature Mr ZIKA et ses animations
-  mz-build.sh         assemblage final
+  mz-build.sh         assemblage d'une vidéo
+  mz-serie.sh         production de toute une série
 tools/
   make_signature.py   logo or métallique (Pillow)
+  make_backdrop.py    fonds cinématographiques jusqu'en 8K
   make_captions.py    sous-titres animés .ass
+  transcrire.py       Whisper, horodatage mot à mot
+  themes.py           détection et contrôle des thèmes
+  decouper.py         découpe en parties de 5 minutes
   make_demo.py        plans de démonstration
 assets/
   fonts/              Anton, Bebas Neue, Oswald, Archivo (OFL)
   brand/              logo et animations générés
 projet/
-  01-source/          vidéos sources téléchargées
-  02-audio/           voix.wav, musique.*
-  03-broll/           tes images et clips
+  01-source/          vidéos sources
+  02-audio/           voix.wav, musique.*, transcription.*
+  03-broll/           images et clips (un dossier par thème en mode série)
   04-rendu/           les vidéos finies
+  parties/            sous-titres découpés + plan.tsv
+  themes.json         le découpage en sujets
   script.txt          le texte affiché à l'écran
 docs/                 les guides
 ```

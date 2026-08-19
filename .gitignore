@@ -16,3 +16,8 @@ assets/brand/*.png
 .DS_Store
 .venv/
 __pycache__/
+
+# --- transcriptions et decoupages : propres a chaque projet ---
+projet/parties/
+projet/themes.json
+projet/02-audio/transcription.*

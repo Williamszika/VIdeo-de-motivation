@@ -139,13 +139,13 @@ HEADER = """[Script Info]
 ScriptType: v4.00+
 PlayResX: {W}
 PlayResY: {H}
-WrapStyle: 2
+WrapStyle: 0
 ScaledBorderAndShadow: yes
 YCbCr Matrix: TV.709
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: MZ,{FONT},{SIZE},{PRI},&H000000FF,{OUT},&H96000000,0,0,0,0,100,100,{SPACING},0,1,{BORD},{SHAD},5,80,80,0,1
+Style: MZ,{FONT},{SIZE},{PRI},&H000000FF,{OUT},&H96000000,0,0,0,0,100,100,{SPACING},0,1,{BORD},{SHAD},5,{MARGE},{MARGE},0,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -230,6 +230,8 @@ def main():
     ap.add_argument("--spacing", type=int, default=1)
     ap.add_argument("--entry", default="pop", choices=list(ENTRIES))
     ap.add_argument("--y", type=int, default=1240, help="hauteur du texte (px)")
+    ap.add_argument("--marge", type=int, default=86,
+                    help="marge laterale : fixe ou le texte passe a la ligne")
     ap.add_argument("--W", type=int, default=1080)
     ap.add_argument("--H", type=int, default=1920)
     args = ap.parse_args()
@@ -257,7 +259,8 @@ def main():
     accent = ass_color(args.accent)
     head = HEADER.format(W=args.W, H=args.H, FONT=fontname, SIZE=args.size,
                          PRI=ass_color(args.color), OUT=ass_color(args.outline),
-                         BORD=args.bord, SHAD=args.shadow, SPACING=args.spacing)
+                         BORD=args.bord, SHAD=args.shadow, SPACING=args.spacing,
+                         MARGE=args.marge)
 
     lines = []
     cx = args.W // 2

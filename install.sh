@@ -62,14 +62,17 @@ if ! python3 -m pip --version >/dev/null 2>&1; then
                  arch) installe python-pip ;; termux) pkg install -y python ;; esac
 fi
 # certaines distributions refusent l'installation hors environnement virtuel
-python3 -m pip install --quiet --upgrade pillow numpy yt-dlp 2>/dev/null \
-  || python3 -m pip install --quiet --break-system-packages --upgrade pillow numpy yt-dlp 2>/dev/null \
+PAQUETS="pillow numpy yt-dlp faster-whisper"
+python3 -m pip install --quiet --upgrade $PAQUETS 2>/dev/null \
+  || python3 -m pip install --quiet --break-system-packages --upgrade $PAQUETS 2>/dev/null \
   || { PIPOPT="ko"; warn "pip a echoue. Cree un environnement :
-     python3 -m venv .venv && source .venv/bin/activate && pip install pillow numpy yt-dlp"; }
+     python3 -m venv .venv && source .venv/bin/activate && pip install $PAQUETS"; }
 if [ "$PIPOPT" != "ko" ]; then
   python3 -c "import PIL, numpy" 2>/dev/null && ok "pillow + numpy" || warn "pillow/numpy absents"
   command -v yt-dlp >/dev/null 2>&1 && ok "yt-dlp $(yt-dlp --version 2>/dev/null)" \
     || warn "yt-dlp absent (necessaire seulement pour les URL YouTube)"
+  python3 -c "import faster_whisper" 2>/dev/null && ok "faster-whisper (transcription)" \
+    || warn "faster-whisper absent — « mz ecoute » ne fonctionnera pas"
 fi
 
 # ---------------------------------------------------------------

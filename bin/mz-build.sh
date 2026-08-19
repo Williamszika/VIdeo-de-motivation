@@ -22,7 +22,7 @@ OPTIONS
   -a <fichier>  Voix
   -m <fichier>  Musique de fond
   -b <dossier>  Dossier des plans
-  -s <fichier>  Script des sous-titres  (*mot* = mot mis en avant)
+  -s <fichier>  Sous-titres : un .txt (*mot* = mis en avant) ou un .srt deja cale
   -o <fichier>  Video de sortie
   -d <sec>      Duree exacte              (defaut 300 = 5 min ; "auto" = duree de la voix)
   -l <look>     orange_teal ice fire gold noir cyber raw   (defaut orange_teal)
@@ -101,7 +101,11 @@ awk -v v="$VDUR" -v d="$DUREE" 'BEGIN{
   if (v > d+2) printf "▲ la voix depasse la video de %.0f s : elle sera coupee (fondu de sortie).\n", v-d;
 }' >&2
 
-CACHE="$MZ_ROOT/projet/.cache"
+# L'empreinte couvre tout ce qui change l'image d'un plan. Deux videos aux
+# reglages differents ne peuvent donc pas se voler leurs plans en cache.
+CLE=$( { printf '%s|%s|%s|%s|%s|%sx%s@%s\n' "$LOOK" "$TEXTURE" "$TRANSI" "$SEG" "$DUREE" "$MZ_W" "$MZ_H" "$MZ_FPS"
+         printf '%s\n' "${PLANS[@]}"; } | cksum | cut -d' ' -f1)
+CACHE="${MZ_CACHE:-$MZ_ROOT/projet/.cache/$CLE}"
 mkdir -p "$CACHE/plans" "$MZ_ROOT/projet/04-rendu"
 [ "$REFAIRE" = "1" ] && rm -f "$CACHE/plans/"*.mp4
 [ -z "$SORTIE" ] && SORTIE="$MZ_ROOT/projet/04-rendu/MrZIKA_$(date +%Y%m%d-%H%M).mp4"
@@ -220,8 +224,13 @@ step "3/5  Sous-titres"
 SUBFILE=""
 if [ "$NOSUBS" = "0" ] && [ -f "$SCRIPT" ] && [ -s "$SCRIPT" ]; then
   SUBFILE="$CACHE/soustitres.ass"
-  python3 "$MZ_TOOLS/make_captions.py" --text "$SCRIPT" --out "$SUBFILE" \
-     --audio "$AUDIO" --duration "$DUREE" --words "$SUBW" --size "$SUBSZ" \
+  case "$SCRIPT" in
+    *.srt|*.SRT) SRCARG=(--srt "$SCRIPT")
+                 hint "sous-titres tires de la transcription (deja cales)" ;;
+    *)           SRCARG=(--text "$SCRIPT" --audio "$AUDIO") ;;
+  esac
+  python3 "$MZ_TOOLS/make_captions.py" "${SRCARG[@]}" --out "$SUBFILE" \
+     --duration "$DUREE" --words "$SUBW" --size "$SUBSZ" \
      --font "$(mz_font_display)" --W "$MZ_W" --H "$MZ_H" || die "Sous-titres impossibles"
 else
   [ "$NOSUBS" = "1" ] && hint "sous-titres desactives (-N)" \
