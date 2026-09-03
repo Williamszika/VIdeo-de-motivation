@@ -64,6 +64,8 @@ images IA : **[docs/05-IMAGES-IA.md](docs/05-IMAGES-IA.md)**
 
 | Commande | Ce qu'elle fait |
 |---|---|
+| `./mz analyser <video>` | Repère les passages nets d'un rush |
+| `./mz montage -i <video>` | Monte un rush court : recadre, étalonne, signe |
 | `./mz plans` | Vérifie tes images / clips et te dit ce qui manque |
 | `./mz looks` | Liste les étalonnages |
 | `./mz ambiances` | Liste les ambiances de fond |
@@ -281,6 +283,9 @@ Produire une série entière depuis une longue vidéo :
 Générer les images par IA :
 **[docs/05-IMAGES-IA.md](docs/05-IMAGES-IA.md)**
 
+Monter un rush court filmé au téléphone :
+**[docs/06-MONTAGE.md](docs/06-MONTAGE.md)**
+
 ---
 
 ## 9. Droits sur les vidéos sources
@@ -317,9 +322,11 @@ bin/
   mz-serie.sh         production de toute une série
 bin/
   mz-images.sh        images IA par thème
+  mz-montage.sh       montage d'un rush court
 tools/
   make_signature.py   logo or métallique (Pillow)
   make_backdrop.py    fonds cinématographiques jusqu'en 8K
+  analyser.py         netteté d'un rush, proposition de montage
   make_prompts.py     rédaction des prompts par thème
   generer_images.py   génération IA (fal · Replicate · OpenAI · Stability · ComfyUI)
   make_captions.py    sous-titres animés .ass

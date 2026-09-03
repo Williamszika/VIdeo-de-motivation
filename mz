@@ -45,6 +45,8 @@ ${C_S}B. Une longue video a decouper en serie${C_0}
 
 ${C_S}OUTILS${C_0}
 
+  ${C_B}mz analyser${C_0} <video>      Repere les passages nets d'un rush
+  ${C_B}mz montage${C_0} -i <video>    Monte un rush : recadre, etalonne, signe
   ${C_B}mz plans${C_0}                 Verifie tes images et clips
   ${C_B}mz looks${C_0}                 Liste les etalonnages
   ${C_B}mz ambiances${C_0}             Liste les ambiances de fond
@@ -229,6 +231,8 @@ case "$CMD" in
   ecoute)    bash "$MZ_ROOT/bin/mz-ecoute.sh" "$@" ;;
   fonds)     bash "$MZ_ROOT/bin/mz-fonds.sh" "$@" ;;
   images)    bash "$MZ_ROOT/bin/mz-images.sh" "$@" ;;
+  montage)   bash "$MZ_ROOT/bin/mz-montage.sh" "$@" ;;
+  analyser)  python3 "$MZ_TOOLS/analyser.py" "$@" ;;
   prompts)   bash "$MZ_ROOT/bin/mz-images.sh" -P "$@" ;;
   brand)     bash "$MZ_ROOT/bin/mz-brand.sh" "$@" ;;
   build)     bash "$MZ_ROOT/bin/mz-build.sh" "$@" ;;

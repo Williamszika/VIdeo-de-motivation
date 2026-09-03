@@ -15,6 +15,7 @@ lumières) pour la teinte.
 | Look | Effet | Pour quel propos |
 |---|---|---|
 | `orange_teal` | Ombres cyan, peaux et lumières orange | Valeur sûre, marche sur tout |
+| `luxe` | Hautes lumières repliées, contraste ferme, peaux chaudes | Plein jour brûlant : voiture, montre, intérieur ensoleillé |
 | `ice` | Froid, acier, désaturé, contraste élevé | Discipline, rigueur, hiver, sport |
 | `fire` | Orange brûlant, noirs écrasés, très punchy | Le grind, la colère, l'urgence |
 | `gold` | Chaud, doux, noirs levés façon pellicule | Gratitude, souvenir, apaisement |

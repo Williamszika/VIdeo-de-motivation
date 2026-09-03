@@ -57,6 +57,15 @@ colorbalance=rs=0.05:bs=0.12:rm=-0.04:bm=0.07:rh=0.09:gh=-0.03:bh=0.10,\
 eq=contrast=1.16:saturation=1.28:gamma=0.95"
       ;;
 
+    # Plein jour brulant : replie les hautes lumieres pour sauver une vitre
+    # ou un ciel crames, garde les peaux chaudes sans virer a l'orange.
+    # Pour les plans voiture, montre, interieur ensoleille.
+    luxe)
+      echo "curves=all='0/0 0.20/0.14 0.50/0.51 0.76/0.80 0.90/0.875 1/0.935',\
+colorbalance=rs=-0.070:gs=0.008:bs=0.100:rm=0.022:gm=0.000:bm=-0.016:rh=0.075:gh=0.022:bh=-0.070,\
+eq=contrast=1.12:saturation=1.06:gamma=0.965"
+      ;;
+
     # Sobre : juste ce qu'il faut pour que ca ne soit pas plat.
     raw|neutre)
       echo "curves=all='0/0 0.25/0.235 0.5/0.5 0.75/0.775 1/1',\
@@ -67,7 +76,7 @@ eq=contrast=1.04:saturation=1.06"
   esac
 }
 
-mz_grades_list() { echo "orange_teal ice fire gold noir cyber raw"; }
+mz_grades_list() { echo "orange_teal luxe ice fire gold noir cyber raw"; }
 
 # ------------------------------------------------------------
 # mz_fx_halation <in> <out> <force 0..1>
@@ -131,6 +140,7 @@ mz_look_desc() {
     gold)        echo "Heure doree — chaud, doux, noirs leves facon pellicule." ;;
     noir)        echo "Noir & blanc contraste, facon photo argentique." ;;
     cyber)       echo "Neon nocturne — magenta / cyan, satures." ;;
+    luxe)        echo "Plein jour maitrise — hautes lumieres repliees, peaux chaudes. Voiture, montre, interieur ensoleille." ;;
     raw)         echo "Sobre — contraste leger, couleurs fideles." ;;
     *)           echo "" ;;
   esac
