@@ -36,7 +36,20 @@ Pour vérifier à tout moment :
 
 ## 2. Les commandes
 
-### A. Une vidéo, tu sais déjà ce que tu veux
+### A. Le monteur — tu décides de tout
+
+| Commande | Ce qu'elle fait |
+|---|---|
+| `./mz projet --depuis <dossier>` | Génère un projet depuis tes images |
+| *(tu édites le fichier)* | Plans, durées, raccords, textes, son |
+| `./mz projet -f <fichier>` | Fabrique la vidéo |
+| `./mz projet -f <fichier> --verifier` | Contrôle sans rien calculer |
+
+Tout est décrit dans un fichier lisible, et chaque plan est mis en cache :
+changer un réglage ne refait que ce qui en dépend.
+Détail complet : **[docs/07-MONTEUR.md](docs/07-MONTEUR.md)**
+
+### B. Une vidéo, en une commande
 
 | Commande | Ce qu'elle fait |
 |---|---|
@@ -46,7 +59,7 @@ Pour vérifier à tout moment :
 | `./mz brand` | Fabrique la signature **Mr ZIKA** et ses animations |
 | `./mz build` | Assemble la vidéo finale |
 
-### B. Une longue vidéo à découper en série
+### C. Une longue vidéo à découper en série
 
 | Commande | Ce qu'elle fait |
 |---|---|
@@ -286,6 +299,9 @@ Générer les images par IA :
 Monter un rush court filmé au téléphone :
 **[docs/06-MONTAGE.md](docs/06-MONTAGE.md)**
 
+Le monteur, pour tout contrôler :
+**[docs/07-MONTEUR.md](docs/07-MONTEUR.md)**
+
 ---
 
 ## 9. Droits sur les vidéos sources
@@ -323,6 +339,8 @@ bin/
 bin/
   mz-images.sh        images IA par thème
   mz-montage.sh       montage d'un rush court
+tools/
+  monteur.py          le monteur : projet -> video
 tools/
   make_signature.py   logo or métallique (Pillow)
   make_backdrop.py    fonds cinématographiques jusqu'en 8K

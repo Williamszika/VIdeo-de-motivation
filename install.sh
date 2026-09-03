@@ -67,7 +67,7 @@ if ! python3 -m pip --version >/dev/null 2>&1; then
                  arch) installe python-pip ;; termux) pkg install -y python ;; esac
 fi
 # certaines distributions refusent l'installation hors environnement virtuel
-PAQUETS="pillow numpy yt-dlp faster-whisper"
+PAQUETS="pillow numpy yt-dlp faster-whisper pyyaml"
 python3 -m pip install --quiet --upgrade $PAQUETS 2>/dev/null \
   || python3 -m pip install --quiet --break-system-packages --upgrade $PAQUETS 2>/dev/null \
   || { PIPOPT="ko"; warn "pip a echoue. Cree un environnement :
@@ -78,6 +78,8 @@ if [ "$PIPOPT" != "ko" ]; then
     || warn "yt-dlp absent (necessaire seulement pour les URL YouTube)"
   python3 -c "import faster_whisper" 2>/dev/null && ok "faster-whisper (transcription)" \
     || warn "faster-whisper absent — « mz ecoute » ne fonctionnera pas"
+  python3 -c "import yaml" 2>/dev/null && ok "pyyaml (fichiers de projet)" \
+    || warn "pyyaml absent — « mz projet » ne lira que le JSON"
 fi
 
 # ---------------------------------------------------------------

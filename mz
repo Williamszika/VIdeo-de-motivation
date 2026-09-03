@@ -26,7 +26,14 @@ cat <<EOA
 
 ${C_S}DEUX FACONS DE TRAVAILLER${C_0}
 
-${C_S}A. Une video, tu sais deja ce que tu veux${C_0}
+${C_S}A. Le monteur — tu decides de tout${C_0}
+
+  ${C_B}mz projet --nouveau${C_0} <f.yml>   Cree un fichier de projet
+  ${C_B}mz projet --depuis${C_0} <dossier>  Genere un projet depuis tes images
+  ${C_D}(tu edites le fichier : plans, durees, raccords, textes, son)${C_0}
+  ${C_B}mz projet -f${C_0} <f.yml>          Fabrique la video
+
+${C_S}B. Une video, en une commande${C_0}
 
   ${C_B}mz init${C_0}                  Prepare le projet
   ${C_B}mz audio${C_0} <url|fichier>   Recupere la voix et la nettoie
@@ -34,7 +41,7 @@ ${C_S}A. Une video, tu sais deja ce que tu veux${C_0}
   ${C_B}mz brand${C_0}                 Fabrique la signature ${C_S}Mr ZIKA${C_0}
   ${C_B}mz build${C_0}                 Assemble la video
 
-${C_S}B. Une longue video a decouper en serie${C_0}
+${C_S}C. Une longue video a decouper en serie${C_0}
 
   ${C_B}mz ecoute${C_0} <fichier>      Transcrit tout, mot par mot
   ${C_B}mz themes${C_0}                Propose un decoupage en sujets
@@ -165,6 +172,9 @@ cmd_doctor() {
   python3 -c "import faster_whisper" 2>/dev/null \
     && printf '  %s✔%s %-10s (transcription)\n' "$C_G" "$C_0" "whisper" \
     || printf '  %s▲%s %-10s absent — necessaire pour « mz ecoute »\n' "$C_Y" "$C_0" "whisper"
+  python3 -c "import yaml" 2>/dev/null \
+    && printf '  %s✔%s %-10s (fichiers de projet)\n' "$C_G" "$C_0" "pyyaml" \
+    || printf '  %s▲%s %-10s absent — « mz projet » ne lira que le JSON\n' "$C_Y" "$C_0" "pyyaml"
 
   echo
   printf '  police titres      : %s\n' "$(mz_font_display)"
@@ -232,6 +242,7 @@ case "$CMD" in
   fonds)     bash "$MZ_ROOT/bin/mz-fonds.sh" "$@" ;;
   images)    bash "$MZ_ROOT/bin/mz-images.sh" "$@" ;;
   montage)   bash "$MZ_ROOT/bin/mz-montage.sh" "$@" ;;
+  projet)    python3 "$MZ_TOOLS/monteur.py" "$@" ;;
   analyser)  python3 "$MZ_TOOLS/analyser.py" "$@" ;;
   prompts)   bash "$MZ_ROOT/bin/mz-images.sh" -P "$@" ;;
   brand)     bash "$MZ_ROOT/bin/mz-brand.sh" "$@" ;;
