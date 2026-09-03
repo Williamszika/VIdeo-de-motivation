@@ -27,7 +27,21 @@ OPTIONS
   -l <look>     Etalonnage : luxe orange_teal ice fire gold noir cyber raw
                                                        (defaut luxe)
   -x <texture>  aucun doux normal fort                 (defaut doux)
-  -T <transi>   coupe flash noir fondu                 (defaut flash)
+  -T <transi>   Raccords entre plans :
+                  coupe        franche, sans fondu
+                  flash        eclair blanc
+                  noir         passage au noir
+                  enchaine     vrai fondu enchaine (le fondu de montage)
+                  zoom         zoom avant sur le raccord
+                  flou         fondu par le flou, tres cinema
+                  glisse       le plan suivant pousse le precedent
+                  dissolution  dissolution granuleuse, facon pellicule
+                  pixel        pixellisation, effet glitch
+                  lumiere      passage par le blanc
+                  radial       balayage circulaire
+                  volet        volet lateral adouci
+                                                       (defaut enchaine)
+  -d <sec>      Duree du raccord enchaine              (defaut 0.35)
   -y <px>       Recadrage vertical, en pixels apres agrandissement
   -X <px>       Recadrage horizontal
   -n <force>    Nettete rendue apres agrandissement    (defaut 0.9)
@@ -45,17 +59,17 @@ EXEMPLE
 EOU
 }
 
-SRC=""; EDL=""; SORTIE=""; LOOK="luxe"; TEXTURE="doux"; TRANSI="flash"
-CY=""; CX=""; NETTETE="0.9"; ZOOM="3"; SON="origine"; FILIGRANE="1"; HALO="0.30"
+SRC=""; EDL=""; SORTIE=""; LOOK="luxe"; TEXTURE="doux"; TRANSI="enchaine"
+CY=""; CX=""; NETTETE="0.9"; ZOOM="3"; SON="origine"; FILIGRANE="1"; HALO="0.30"; XF="0.35"
 NOBRAND=0; CRF="18"
 
-while getopts "i:e:o:l:x:T:y:X:n:z:a:k:q:H:Ih" opt; do
+while getopts "i:e:o:l:x:T:y:X:n:z:a:k:q:H:d:Ih" opt; do
   case "$opt" in
     i) SRC="$OPTARG" ;;   e) EDL="$OPTARG" ;;   o) SORTIE="$OPTARG" ;;
     l) LOOK="$OPTARG" ;;  x) TEXTURE="$OPTARG" ;; T) TRANSI="$OPTARG" ;;
     y) CY="$OPTARG" ;;    X) CX="$OPTARG" ;;    n) NETTETE="$OPTARG" ;;
     z) ZOOM="$OPTARG" ;;  a) SON="$OPTARG" ;;   k) FILIGRANE="$OPTARG" ;;
-    q) CRF="$OPTARG" ;;   H) HALO="$OPTARG" ;;   I) NOBRAND=1 ;;
+    q) CRF="$OPTARG" ;;   H) HALO="$OPTARG" ;;   d) XF="$OPTARG" ;;   I) NOBRAND=1 ;;
     h) usage; exit 0 ;;   *) usage; exit 1 ;;
   esac
 done
@@ -111,12 +125,41 @@ ok "$N plans  ·  $(mz_hms "$TOTAL") a l'ecran"
 GRADE=$(mz_grade "$LOOK"); TEXT=$(mz_fx_texture "$TEXTURE")
 hint "etalonnage $LOOK — $(mz_look_desc "$LOOK")"
 
+# Deux familles de raccords :
+#  - les fondus « cuits » dans chaque plan (coupe, flash, noir) ;
+#  - les vrais raccords a recouvrement, ou les deux plans coexistent
+#    pendant la transition. C'est ce que fait un logiciel de montage.
+XFADE=""
 case "$TRANSI" in
-  flash) FIN=",fade=t=in:st=0:d=0.08:color=white" ; FOUT="" ;;
-  noir)  FIN=",fade=t=in:st=0:d=0.14:color=black" ; FOUT="noir" ;;
-  fondu) FIN=",fade=t=in:st=0:d=0.12:color=black" ; FOUT="fondu" ;;
-  *)     TRANSI="coupe"; FIN="" ; FOUT="" ;;
+  coupe)       FIN="" ; FOUT="" ;;
+  flash)       FIN=",fade=t=in:st=0:d=0.08:color=white" ; FOUT="" ;;
+  noir)        FIN=",fade=t=in:st=0:d=0.14:color=black" ; FOUT="noir" ;;
+  fondu)       FIN=",fade=t=in:st=0:d=0.12:color=black" ; FOUT="fondu" ;;
+  enchaine)    XFADE="fade" ;;
+  zoom)        XFADE="zoomin" ;;
+  flou)        XFADE="hblur" ;;
+  glisse)      XFADE="slideleft" ;;
+  dissolution) XFADE="dissolve" ;;
+  pixel)       XFADE="pixelize" ;;
+  lumiere)     XFADE="fadewhite" ;;
+  ombre)       XFADE="fadeblack" ;;
+  radial)      XFADE="radial" ;;
+  volet)       XFADE="smoothleft" ;;
+  rideau)      XFADE="wipeleft" ;;
+  *)           TRANSI="enchaine"; XFADE="fade" ;;
 esac
+[ -n "$XFADE" ] && { FIN=""; FOUT=""; }
+
+# un raccord ne peut pas durer plus que la moitie du plus court des plans
+if [ -n "$XFADE" ] && [ "$N" -gt 1 ]; then
+  PLUS_COURT=$(awk 'BEGIN{m=1e9} {print}' /dev/null)
+  PLUS_COURT=$(for ((k=0; k<N; k++)); do
+      awk -v u="${DUREES[$k]}" -v v="${VITESSES[$k]}" 'BEGIN{printf "%.3f\n", u/v}'
+    done | sort -n | head -1)
+  XF=$(awk -v x="$XF" -v c="$PLUS_COURT" 'BEGIN{m=c*0.45; printf "%.3f", (x>m)?m:x}')
+  TOTAL=$(awk -v t="$TOTAL" -v n="$N" -v x="$XF" 'BEGIN{printf "%.3f", t-(n-1)*x}')
+  ok "raccords « $TRANSI » de ${XF}s — duree finale $(mz_hms "$TOTAL")"
+fi
 
 # ---------------------------------------------------------------
 step "Montage"
@@ -143,7 +186,20 @@ setpts=(PTS-STARTPTS)*${INV},unsharp=5:5:${NETTETE}:5:5:0.0,${PUSH},${GRADE},for
   GRAPHE+="[lit$k]${TEXT}${FIN}${SORTFADE},trim=0:${L},setpts=PTS-STARTPTS,format=yuv420p,setsar=1[s$k];"
   CHAINE+="[s$k]"
 done
-GRAPHE+="${CHAINE}concat=n=${N}:v=1:a=0[mont];"
+if [ -n "$XFADE" ] && [ "$N" -gt 1 ]; then
+  # chaine de recouvrements : chaque raccord consomme XF secondes
+  CUMUL=0; PREC="s0"
+  for ((k=1; k<N; k++)); do
+    LP=$(awk -v u="${DUREES[$((k-1))]}" -v v="${VITESSES[$((k-1))]}" 'BEGIN{printf "%.3f", u/v}')
+    CUMUL=$(awk -v c="$CUMUL" -v l="$LP" -v x="$XF" 'BEGIN{printf "%.3f", c+l-x}')
+    SUIV="x$k"; [ "$k" -eq $((N-1)) ] && SUIV="mont"
+    GRAPHE+="[$PREC][s$k]xfade=transition=${XFADE}:duration=${XF}:offset=${CUMUL}[$SUIV];"
+    PREC="$SUIV"
+  done
+  [ "$N" -eq 1 ] && GRAPHE+="[s0]null[mont];"
+else
+  GRAPHE+="${CHAINE}concat=n=${N}:v=1:a=0[mont];"
+fi
 CUR="mont"; IDX=$N
 
 # --- signature de fin.

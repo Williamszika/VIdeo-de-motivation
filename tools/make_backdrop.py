@@ -434,6 +434,21 @@ def generer(nom_ambiance, seed, w, h, motif=None):
     return Image.fromarray(img.astype(np.uint8), "RGB"), motif
 
 
+
+def texture_atmosphere(chemin, taille=2400, graine=7):
+    """Nappe de brume douce, en niveaux de gris, destinee a deriver lentement
+    par-dessus l'image. C'est ce mouvement continu qui empeche un fond fixe
+    de paraitre mort — l'equivalent d'un calque de fractal noise anime."""
+    rng = np.random.default_rng(graine)
+    n = fbm(taille, taille, rng, octaves=6, base=2.0, gain=0.55)
+    n = (n - n.min()) / max(1e-6, n.max() - n.min())
+    # recentre autour de 0.5 : en fusion « lumiere douce », 0.5 ne change rien
+    n = 0.5 + (n - n.mean()) * 0.85
+    v = np.clip(n * 255.0, 0, 255).astype(np.uint8)
+    Image.fromarray(np.dstack([v, v, v]), "RGB").save(chemin, quality=92)
+    return chemin
+
+
 def main():
     ap = argparse.ArgumentParser(description="Fonds cinematographiques generes")
     ap.add_argument("--ambiance", default="aube_froide")
@@ -447,7 +462,14 @@ def main():
                     help="cretes, cretes_figure, ville, ville_figure, route, mer, vide, vide_figure")
     ap.add_argument("--qualite", type=int, default=95)
     ap.add_argument("--liste", action="store_true")
+    ap.add_argument("--atmosphere", default=None,
+                    help="produire seulement la nappe de brume derivante")
     args = ap.parse_args()
+
+    if args.atmosphere:
+        texture_atmosphere(args.atmosphere)
+        print(f"nappe de brume : {args.atmosphere}")
+        return
 
     if args.liste:
         print("Ambiances disponibles :\n")

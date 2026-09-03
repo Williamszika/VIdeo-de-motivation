@@ -105,51 +105,109 @@ des photos fixes.
 
 ---
 
-## 5. Transitions — option `-T`
+## 5. Raccords entre plans — option `-T`
+
+Deux familles. La première « cuit » un fondu dans chaque plan ; la seconde
+fait **coexister les deux plans** pendant la transition, comme un vrai banc
+de montage.
+
+### Fondus cuits — rapides, sans coût
+
+| Valeur | Effet |
+|---|---|
+| `coupe` | Coupe franche. **Par défaut.** Zéro clignotement, énergie maximale |
+| `flash` | Éclair blanc de 0,09 s. Percussif, à caler sur la musique |
+| `fondu` | Passage au noir de 0,16 s |
+| `noir` | Passage au noir de 0,24 s. Marque une respiration |
+
+> `fondu` et `noir` passent réellement **par le noir**. Avec des plans courts
+> (`-p 4`), ça finit par clignoter.
+
+### Raccords à recouvrement — les vrais
+
+Les deux plans se superposent pendant `-D` secondes (0,40 par défaut).
+
+| Valeur | Effet | Équivalent |
+|---|---|---|
+| `enchaine` | Fondu enchaîné | *Cross Dissolve* |
+| `flou` | Fondu par le flou horizontal | *Whip pan* / directional blur |
+| `zoom` | Zoom avant qui traverse le raccord | *Zoom transition* |
+| `glisse` | Le plan suivant pousse le précédent | *Push* |
+| `dissolution` | Dissolution granuleuse | *Film dissolve* |
+| `pixel` | Pixellisation | *Glitch* |
+| `lumiere` | Passage par le blanc | *Dip to white* |
+| `radial` | Balayage circulaire | *Radial wipe* |
+| `volet` | Volet latéral adouci | *Smooth wipe* |
+| `rideau` | Volet net | *Linear wipe* |
+
+```bash
+./mz build -T enchaine -D 0.5      # le plus classique
+./mz build -T flou -D 0.35         # très After Effects
+./mz build -T zoom -D 0.3 -p 4     # nerveux
+```
+
+**Ce que ça coûte.** Un raccord consomme 0,4 s à chaque jointure, donc il faut
+plus de plans pour la même durée : le studio le recalcule tout seul. La
+mémoire monte à environ 4 Go pour 50 plans enchaînés. Au-delà de 70 plans, le
+studio repasse en coupe franche et te le dit — allonge les plans (`-p 9`)
+pour garder ton raccord.
+
+Même jeu d'options dans `mz montage`, avec `-d` pour la durée.
+
+## 6. Sous-titres animés — options `-A` et `-B`
+
+Onze animations d'apparition, chacune reprenant un preset d'After Effects.
+Elles sont écrites en balises ASS : `\t()` anime une propriété, `\clip()`
+masque, `\move()` déplace, `\blur` floute, `\kf` cadence le karaoké.
 
 | Valeur | Effet | Quand |
 |---|---|---|
-| `coupe` | Coupe franche, aucun fondu | **Par défaut.** C'est ce que fait le format court : maximum d'énergie, zéro clignotement |
-| `flash` | Éclair blanc de 0,09 s | Percussif. Cale-le sur la musique |
-| `fondu` | Passage au noir de 0,16 s | Adoucit sans casser le rythme |
-| `noir` | Passage au noir de 0,24 s | Marque une respiration entre deux idées |
-
-> `fondu` et `noir` passent réellement **par le noir** à chaque raccord.
-> Avec des plans courts (`-p 4`), ça finit par clignoter : reste sur `coupe`.
-> Plus les plans sont longs (`-p 8` et plus), plus le fondu se justifie.
-
-```bash
-./mz build -T flash -p 4.5     # nerveux
-./mz build -T fondu -p 9       # contemplatif
-```
-
----
-
-## 6. Sous-titres animés
-
-Une reprise du style TikTok : gros caractères, contour noir épais, ombre
-portée, apparition élastique.
-
-- **Le « pop »** : le texte entre à 58 % de sa taille, dépasse à 106 %,
-  puis se pose à 100 %. En 170 millisecondes. C'est l'équivalent d'une
-  courbe *ease-out-back* d'After Effects.
-- **Le mot doré** : entoure un mot d'astérisques dans `script.txt` et il
-  s'affiche en `#FFC845`.
-- **Le calage** : la détection de silences (`silencedetect`) repère les
-  plages où tu parles et y répartit les groupes de mots. Pas besoin de
-  synchroniser à la main.
+| `pop` | Rebond élastique, dépasse puis se pose | **Par défaut.** Le plus sûr |
+| `frappe` | Arrive très grand et net | Phrases coup de poing |
+| `montee` | Monte depuis le bas en s'ouvrant | Passages calmes |
+| `cascade` | Lettre par lettre en décalé, avec flou | L'« Animate In » d'After Effects |
+| `machine` | Machine à écrire | Révélation, suspense |
+| `balayage` | Révélé par un masque qui s'ouvre | Titres |
+| `flou` | Sort du flou en se posant | Très cinéma |
+| `glisse` | Glisse du côté avec une traînée | Rythme rapide |
+| `karaoke` | Chaque mot s'allume à son tour | Quand on suit la voix |
+| `bloc` | Bandeau qui se déploie puis le texte | Le look TikTok classique |
+| `aucune` | Rien | Sous-titres sobres |
 
 ```bash
-./mz build -f 130 -w 2      # gros caractères, 2 mots par groupe : très frappé
-./mz build -f 96  -w 5      # plus discret, phrases plus longues
+./mz build -A cascade
+./mz build -A karaoke -w 5
+python3 tools/make_captions.py --lister
 ```
 
-**Où c'est réglé** : `tools/make_captions.py`. Le dictionnaire `ENTRIES`
-contient les animations d'entrée (`pop`, `punch`, `montee`, `aucune`).
-Les couleurs, la taille du contour et la hauteur du texte sont des options
-en ligne de commande.
+### Le bandeau — `-B`
 
----
+Sur une image chargée, un contour ne suffit pas. `-B` pose un bandeau opaque
+derrière chaque sous-titre, dimensionné **exactement** au texte.
+
+```bash
+./mz build -A pop -B "#0E0E10"
+```
+
+Le studio mesure la largeur réelle que libass va rendre — pas celle que
+Pillow calcule, qui est 1,7 fois trop grande sur Anton. Le facteur est
+mesuré une fois par police, en rendant réellement une image, puis gardé en
+cache dans `assets/fonts/.metriques.json`.
+
+> Le bandeau est opaque par défaut. En le rendant transparent
+> (`--fond-alpha`), les mots colorés laissent apparaître des raccords :
+> libass dessine une boîte par segment de couleur, et les recouvrements se
+> voient. C'est une limite de libass, pas un réglage.
+
+### Le mot doré
+
+Entoure un mot d'astérisques dans `script.txt` : `la *discipline*`. Il
+s'affiche en `#FFC845`, dans toutes les animations.
+
+### Le calage
+
+Détection des silences dans la voix, ou horodatage mot à mot venu de
+`mz ecoute`. Aucun réglage manuel.
 
 ## 7. La signature Mr ZIKA
 
@@ -250,7 +308,21 @@ technique de la radio, et elle évite le mixage manuel.
 
 ---
 
-## 9. Aller plus loin
+## 9. La brume dérivante — option `-F`
+
+Un fond fixe, même avec un zoom lent, finit par paraître mort. `-F` fait
+dériver une nappe de brume par-dessus l'image, en fusion « lumière douce ».
+
+```bash
+./mz build -F 0.30      # 0 désactive, 0.6 est très marqué
+```
+
+La nappe est du bruit fractal calculé une fois (`assets/overlays/brume.jpg`),
+puis déplacée sur deux périodes premières entre elles — le motif ne se répète
+donc jamais à l'identique. C'est l'équivalent d'un calque *fractal noise*
+animé dans After Effects, pour une fraction du coût.
+
+## 10. Aller plus loin
 
 Effets disponibles dans `lib/grades.sh`, non activés par défaut :
 

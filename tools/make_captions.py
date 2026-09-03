@@ -146,6 +146,7 @@ YCbCr Matrix: TV.709
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: MZ,{FONT},{SIZE},{PRI},&H000000FF,{OUT},&H96000000,0,0,0,0,100,100,{SPACING},0,1,{BORD},{SHAD},5,{MARGE},{MARGE},0,1
+Style: MZB,{FONT},{SIZE},{PRI},&H000000FF,{FOND},&H00000000,0,0,0,0,100,100,{SPACING},0,3,{PAD},0,5,{MARGE},{MARGE},0,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -158,38 +159,240 @@ def ts(t):
     return f"{h:d}:{m:02d}:{s:05.2f}"
 
 
-ENTRIES = {
-    # nom       : (tags d'apparition, duree ms)
-    "pop":    (r"\fscx58\fscy58\t(0,90,\fscx106\fscy106)\t(90,170,\fscx100\fscy100)", 170),
-    "punch":  (r"\fscx135\fscy135\alpha&HFF&\t(0,70,\alpha&H00&\fscx96\fscy96)\t(70,150,\fscx100\fscy100)", 150),
-    "montee": (r"\fscx100\fscy100\alpha&HFF&\move($CX,$CY2,$CX,$CY,0,180)\t(0,150,\alpha&H00&)", 180),
-    "aucune": (r"", 0),
+# ==================================================================
+#  Bibliotheque d'animations de texte
+#  Chaque entree reproduit un preset d'After Effects, ecrit en balises
+#  ASS : \t() anime une propriete, \clip() masque, \move() deplace,
+#  \blur floute, \k cadence le karaoke.
+# ==================================================================
+DESCRIPTIONS = {
+    "pop":      "Rebond elastique — le texte depasse sa taille puis se pose. Le plus sur.",
+    "frappe":   "Impact — arrive tres grand et net. Pour les phrases coup de poing.",
+    "montee":   "Monte depuis le bas en s'ouvrant. Doux, pour les passages calmes.",
+    "cascade":  "Lettre par lettre en decale, avec flou. L'« Animate In » d'After Effects.",
+    "machine":  "Machine a ecrire : les lettres apparaissent une par une.",
+    "balayage": "Revele par un balayage de gauche a droite, comme un masque anime.",
+    "flou":     "Sort du flou en se posant. Tres cinema.",
+    "glisse":   "Glisse depuis le cote avec une trainee de flou.",
+    "karaoke":  "Chaque mot s'allume a son tour, cale sur le debit.",
+    "bloc":     "Un bandeau se deploie, puis le texte apparait dessus.",
+    "aucune":   "Aucune animation.",
 }
 
 
-def render_line(chunk, accent, entry, cx, cy, keyword_scale=1.0):
-    """Transforme *mot* en mot accentue, et applique l'animation d'entree."""
-    tags, _ = ENTRIES.get(entry, ENTRIES["pop"])
-    tags = tags.replace("$CX", str(cx)).replace("$CY2", str(cy + 70)).replace("$CY", str(cy))
-
-    def repl(m):
-        word = m.group(1)
-        # les balises en ligne veulent une couleur fermee par &
-        s = f"{{\\c{accent}&"
-        if keyword_scale != 1.0:
-            s += f"\\fscx{int(100*keyword_scale)}\\fscy{int(100*keyword_scale)}"
-        s += "}" + word + "{\\c&H00FFFFFF&"
-        if keyword_scale != 1.0:
-            s += "\\fscx100\\fscy100"
-        s += "}"
-        return s
-
-    body = re.sub(r"\*([^*]+)\*", repl, chunk)
-    return "{\\an5\\pos(%d,%d)%s}%s" % (cx, cy, tags, body)
+CAL_TEXTE = "La discipline gagne toujours"
+CAL_TAILLE = 100
+CAL_DEFAUT = 0.60
 
 
-TC = re.compile(r"(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})\s*-->\s*"
-                r"(\d{1,2}):(\d{2}):(\d{2})[,.](\d{1,3})")
+def facteur_libass(police):
+    """libass ne rend pas une police a la meme largeur que Pillow : le
+    rapport est constant par police (0,573 pour Anton), mais aucune metrique
+    simple ne le predit. On le mesure donc une fois, en rendant reellement
+    une image, et on garde le resultat en cache."""
+    import json, subprocess, tempfile
+    if not police or not os.path.isfile(police):
+        return CAL_DEFAUT
+    cache = os.path.join(os.path.dirname(police), ".metriques.json")
+    cle = os.path.basename(police)
+    donnees = {}
+    if os.path.isfile(cache):
+        try:
+            donnees = json.load(open(cache, encoding="utf-8"))
+        except Exception:
+            donnees = {}
+    if cle in donnees:
+        return float(donnees[cle])
+
+    famille = os.path.splitext(cle)[0].split("-")[0]
+    tmp = tempfile.mkdtemp(prefix="mz-cal-")
+    try:
+        a = os.path.join(tmp, "c.ass")
+        png = os.path.join(tmp, "c.png")
+        open(a, "w", encoding="utf-8").write(
+            "[Script Info]\nScriptType: v4.00+\nPlayResX: 1080\nPlayResY: 1920\n"
+            "WrapStyle: 2\nScaledBorderAndShadow: yes\n\n[V4+ Styles]\n"
+            "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, "
+            "OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, "
+            "ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, "
+            "MarginL, MarginR, MarginV, Encoding\n"
+            f"Style: C,{famille},{CAL_TAILLE},&H00FFFFFF,&H000000FF,&H00000000,"
+            "&H96000000,0,0,0,0,100,100,0,0,1,0,0,5,10,10,0,1\n\n[Events]\n"
+            "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, "
+            "Effect, Text\n"
+            "Dialogue: 0,0:00:00.00,0:00:02.00,C,,0,0,0,,"
+            "{\\an5\\pos(540,960)}" + CAL_TEXTE + "\n")
+        subprocess.run(
+            ["ffmpeg", "-y", "-v", "error", "-f", "lavfi",
+             "-i", "color=c=black:s=1080x1920",
+             "-vf", f"subtitles='{a}':fontsdir='{os.path.dirname(police)}'",
+             "-frames:v", "1", png],
+            check=True, capture_output=True, timeout=120)
+        import numpy as np
+        from PIL import Image, ImageFont
+        im = np.asarray(Image.open(png).convert("L"))
+        cols = np.where(im.max(axis=0) > 60)[0]
+        if len(cols) < 2:
+            return CAL_DEFAUT
+        rendu = float(cols.max() - cols.min())
+        attendu = ImageFont.truetype(police, CAL_TAILLE).getlength(CAL_TEXTE)
+        f = rendu / attendu if attendu else CAL_DEFAUT
+        if not (0.2 < f < 2.0):
+            return CAL_DEFAUT
+        donnees[cle] = round(f, 4)
+        try:
+            json.dump(donnees, open(cache, "w", encoding="utf-8"), indent=1)
+        except Exception:
+            pass
+        return f
+    except Exception:
+        return CAL_DEFAUT
+    finally:
+        import shutil
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def mesure(texte, police, taille):
+    """Largeur et hauteur du texte TELLES QUE libass va les rendre.
+    Sans ca, les bandeaux sont systematiquement trop etroits."""
+    try:
+        from PIL import ImageFont
+        f = ImageFont.truetype(police, taille)
+        k = facteur_libass(police)
+        return int(f.getlength(texte) * k), int(taille * 0.74)
+    except Exception:
+        return int(len(texte) * taille * 0.31), int(taille * 0.74)
+
+
+def jetons(chunk):
+    """Decoupe en morceaux (texte, accentue) d'apres les *asterisques*."""
+    out, i = [], 0
+    for m in re.finditer(r"\*([^*]+)\*", chunk):
+        if m.start() > i:
+            out.append((chunk[i:m.start()], False))
+        out.append((m.group(1), True))
+        i = m.end()
+    if i < len(chunk):
+        out.append((chunk[i:], False))
+    return out or [(chunk, False)]
+
+
+def _couleur(accentue, accent):
+    return f"\\c{accent}&" if accentue else "\\c&H00FFFFFF&"
+
+
+def _corps(toks, accent):
+    """Texte simple, avec les mots accentues colores."""
+    s = ""
+    for t, acc in toks:
+        s += "{" + _couleur(acc, accent) + "}" + t
+    return s
+
+
+def _par_caractere(toks, accent, pas, duree, avec_flou):
+    """Un bloc de balises par caractere : c'est ce qui produit le decale."""
+    s, n = "", 0
+    for t, acc in toks:
+        for ch in t:
+            if ch == " ":
+                s += " "
+                continue
+            d0 = int(n * pas)
+            d1 = d0 + duree
+            tags = _couleur(acc, accent) + "\\alpha&HFF&"
+            if avec_flou:
+                tags += "\\blur6"
+                s += ("{" + tags + f"\\t({d0},{d1},\\alpha&H00&\\blur0)" + "}") + ch
+            else:
+                s += ("{" + tags + f"\\t({d0},{d1},\\alpha&H00&)" + "}") + ch
+            n += 1
+    return s
+
+
+def construire(nom, toks, a, b, cx, cy, accent, taille, police, W, H,
+               fond=False):
+    """Renvoie une liste de (couche, debut, fin, style, texte) pour un groupe."""
+    plein = "".join(t for t, _ in toks)
+    duree_ms = int((b - a) * 1000)
+    base = f"\\an5\\pos({cx},{cy})"
+    style = "MZB" if fond else "MZ"
+    ev = []
+
+    if nom == "frappe":
+        tags = base + "\\fscx150\\fscy150\\alpha&HFF&" \
+               "\\t(0,70,\\alpha&H00&\\fscx97\\fscy97)\\t(70,150,\\fscx100\\fscy100)"
+        ev.append((0, a, b, style, "{" + tags + "}" + _corps(toks, accent)))
+
+    elif nom == "montee":
+        tags = (base.replace(f"\\pos({cx},{cy})", "")
+                + f"\\move({cx},{cy+80},{cx},{cy},0,200)"
+                + "\\alpha&HFF&\\fscx92\\fscy92"
+                  "\\t(0,180,\\alpha&H00&\\fscx100\\fscy100)")
+        ev.append((0, a, b, style, "{" + tags + "}" + _corps(toks, accent)))
+
+    elif nom == "cascade":
+        n = max(1, len(plein.replace(" ", "")))
+        pas = min(46, max(14, duree_ms * 0.42 / n))
+        ev.append((0, a, b, style, "{" + base + "}" + _par_caractere(toks, accent, pas, 150, True)))
+
+    elif nom == "machine":
+        n = max(1, len(plein.replace(" ", "")))
+        pas = min(60, max(18, duree_ms * 0.55 / n))
+        ev.append((0, a, b, style, "{" + base + "}" + _par_caractere(toks, accent, pas, 1, False)))
+
+    elif nom == "balayage":
+        # un masque rectangulaire s'ouvre de la gauche vers la droite
+        lw, lh = mesure(plein, police, taille)
+        x0, x1 = cx - lw / 2 - 30, cx + lw / 2 + 30
+        y0, y1 = cy - lh, cy + lh
+        tags = (base + f"\\clip({int(x0)},{int(y0)},{int(x0)},{int(y1)})"
+                + f"\\t(0,260,\\clip({int(x0)},{int(y0)},{int(x1)},{int(y1)}))")
+        ev.append((0, a, b, style, "{" + tags + "}" + _corps(toks, accent)))
+
+    elif nom == "flou":
+        tags = base + "\\blur12\\fscx108\\fscy108\\alpha&H60&" \
+               "\\t(0,240,\\blur0\\fscx100\\fscy100\\alpha&H00&)"
+        ev.append((0, a, b, style, "{" + tags + "}" + _corps(toks, accent)))
+
+    elif nom == "glisse":
+        dx = 220 if int(a * 10) % 2 == 0 else -220
+        tags = (base.replace(f"\\pos({cx},{cy})", "")
+                + f"\\move({cx+dx},{cy},{cx},{cy},0,220)"
+                + "\\alpha&HFF&\\blur9\\t(0,200,\\alpha&H00&\\blur0)")
+        ev.append((0, a, b, style, "{" + tags + "}" + _corps(toks, accent)))
+
+    elif nom == "karaoke":
+        # \kf remplit chaque mot a son tour ; la duree suit la longueur
+        mots = plein.split()
+        poids = [max(1, len(m)) for m in mots] or [1]
+        total = sum(poids)
+        cs = max(1, int((b - a) * 100))
+        s = "{" + base + "\\c" + accent + "&\\2c&H00FFFFFF&}"
+        pris = 0
+        for i, m in enumerate(mots):
+            d = int(cs * poids[i] / total) if i < len(mots) - 1 else cs - pris
+            pris += d
+            s += "{\\kf" + str(max(1, d)) + "}" + m + (" " if i < len(mots) - 1 else "")
+        ev.append((0, a, b, style, s))
+
+    elif nom == "bloc":
+        # le bandeau est dessine par libass lui-meme (BorderStyle 3) : il epouse
+        # donc exactement le texte, quelle que soit la police et la taille.
+        style = "MZB"
+        tags = (base + "\\fscx40\\fscy88\\alpha&HFF&"
+                "\\t(0,150,\\alpha&H00&\\fscx104\\fscy104)"
+                "\\t(150,240,\\fscx100\\fscy100)")
+        ev.append((0, a, b, style, "{" + tags + "}" + _corps(toks, accent)))
+
+    elif nom == "aucune":
+        ev.append((0, a, b, style, "{" + base + "}" + _corps(toks, accent)))
+
+    else:  # pop
+        tags = base + "\\fscx58\\fscy58" \
+               "\\t(0,90,\\fscx106\\fscy106)\\t(90,170,\\fscx100\\fscy100)"
+        ev.append((0, a, b, style, "{" + tags + "}" + _corps(toks, accent)))
+
+    return ev
 
 
 def parse_srt(path):
@@ -213,10 +416,10 @@ def parse_srt(path):
 
 def main():
     ap = argparse.ArgumentParser(description="Sous-titres animes TikTok (.ass)")
-    src = ap.add_mutually_exclusive_group(required=True)
+    src = ap.add_mutually_exclusive_group(required=False)
     src.add_argument("--text", help="fichier texte du script")
     src.add_argument("--srt", help="sous-titres existants (.srt)")
-    ap.add_argument("--out", required=True, help="fichier .ass a produire")
+    ap.add_argument("--out", help="fichier .ass a produire")
     ap.add_argument("--audio", help="voix : sert a caler les mots sur la parole")
     ap.add_argument("--duration", type=float, default=300.0)
     ap.add_argument("--words", type=int, default=3, help="mots par groupe (1 a 5)")
@@ -228,7 +431,20 @@ def main():
     ap.add_argument("--bord", type=int, default=9)
     ap.add_argument("--shadow", type=int, default=4)
     ap.add_argument("--spacing", type=int, default=1)
-    ap.add_argument("--entry", default="pop", choices=list(ENTRIES))
+    ap.add_argument("--anim", "--entry", dest="anim", default="pop",
+                    choices=list(DESCRIPTIONS),
+                    help="animation d'apparition (voir --lister)")
+    ap.add_argument("--lister", action="store_true", help="liste les animations")
+    ap.add_argument("--fond", nargs="?", const="#0E0E10", default=None,
+                    metavar="COULEUR",
+                    help="bandeau opaque derriere CHAQUE sous-titre : "
+                         "indispensable sur des images chargees")
+    ap.add_argument("--fond-alpha", type=int, default=0,
+                    help="transparence du bandeau, 0 opaque a 255 invisible. "
+                         "Au-dela de 0, les mots colores laissent voir des "
+                         "raccords : libass dessine une boite par segment")
+    ap.add_argument("--fond-marge", type=int, default=22,
+                    help="marge du bandeau autour du texte, en pixels")
     ap.add_argument("--y", type=int, default=1240, help="hauteur du texte (px)")
     ap.add_argument("--marge", type=int, default=86,
                     help="marge laterale : fixe ou le texte passe a la ligne")
@@ -236,9 +452,20 @@ def main():
     ap.add_argument("--H", type=int, default=1920)
     args = ap.parse_args()
 
+    if args.lister:
+        print("Animations de texte disponibles (option --anim) :\n")
+        for k, v in DESCRIPTIONS.items():
+            print(f"  {k:10s} {v}")
+        return
+
     fontname = args.font or "Anton"
     if args.font and os.path.isfile(args.font):
         fontname = os.path.splitext(os.path.basename(args.font))[0].split("-")[0]
+
+    if not args.out:
+        sys.exit("Il manque --out (ou utilise --lister pour voir les animations).")
+    if not args.srt and not args.text:
+        sys.exit("Donne --text ou --srt (ou --lister pour voir les animations).")
 
     if args.srt:
         timed = parse_srt(args.srt)
@@ -257,18 +484,25 @@ def main():
         timed = time_chunks(chunks, dur, segs)
 
     accent = ass_color(args.accent)
+    fondu_hex = args.fond or "#0E0E10"
+    aa = max(0, min(255, args.fond_alpha))
+    fond_ass = ass_color(fondu_hex).replace("&H00", f"&H{aa:02X}", 1)
     head = HEADER.format(W=args.W, H=args.H, FONT=fontname, SIZE=args.size,
                          PRI=ass_color(args.color), OUT=ass_color(args.outline),
                          BORD=args.bord, SHAD=args.shadow, SPACING=args.spacing,
-                         MARGE=args.marge)
+                         MARGE=args.marge, FOND=fond_ass, PAD=args.fond_marge)
 
+    police = args.font if (args.font and os.path.isfile(args.font)) else ""
     lines = []
     cx = args.W // 2
     for body, a, b in timed:
         if b <= a:
             b = a + 0.4
-        txt = render_line(body.strip(), accent, args.entry, cx, args.y)
-        lines.append(f"Dialogue: 0,{ts(a)},{ts(b)},MZ,,0,0,0,,{txt}")
+        toks = jetons(body.strip())
+        for couche, ea, eb, style, txt in construire(
+                args.anim, toks, a, b, cx, args.y, accent,
+                args.size, police, args.W, args.H, bool(args.fond)):
+            lines.append(f"Dialogue: {couche},{ts(ea)},{ts(eb)},{style},,0,0,0,,{txt}")
 
     os.makedirs(os.path.dirname(os.path.abspath(args.out)) or ".", exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
@@ -278,6 +512,9 @@ def main():
     affiche = sum(b - a for _, a, b in timed)
     print(f"sous-titres : {args.out}")
     print(f"  {len(timed)} groupes de mots, police {fontname} {args.size}px")
+    print(f"  animation : {args.anim} — {DESCRIPTIONS[args.anim]}")
+    if args.fond or args.anim == "bloc":
+        print(f"  bandeau   : {fondu_hex}, transparence {aa}/255, marge {args.fond_marge}px")
     print(f"  couverture : {span/60:.1f} min" + ("  (cale sur la voix)" if args.audio else ""))
 
     # un script trop court laisse de longs passages sans texte a l'ecran

@@ -27,7 +27,16 @@ OPTIONS
   -d <sec>      Duree exacte              (defaut 300 = 5 min ; "auto" = duree de la voix)
   -l <look>     orange_teal ice fire gold noir cyber raw   (defaut orange_teal)
   -x <texture>  aucun doux normal fort                     (defaut normal)
-  -T <transi>   coupe flash noir fondu                     (defaut coupe)
+  -T <transi>   Raccords : coupe · flash · noir · fondu
+                Vrais raccords a recouvrement (les deux plans coexistent) :
+                enchaine · zoom · flou · glisse · dissolution · pixel ·
+                lumiere · radial · volet · rideau            (defaut coupe)
+  -D <sec>      Duree d'un raccord a recouvrement           (defaut 0.40)
+  -A <anim>     Animation du texte : pop frappe montee cascade machine
+                balayage flou glisse karaoke bloc aucune      (defaut pop)
+  -B [couleur]  Bandeau opaque derriere les sous-titres
+  -F <force>    Brume derivante sur le fond, 0 a 0.6        (defaut 0.25)
+                Empeche un fond fixe de paraitre mort.
   -p <sec>      Duree d'un plan                            (defaut 6)
   -v <vol>      Volume de la musique en dB                 (defaut -19)
   -f <taille>   Taille des sous-titres en px               (defaut 112)
@@ -51,16 +60,18 @@ SCRIPT="$MZ_ROOT/projet/script.txt"
 SORTIE=""
 DUREE="$MZ_DUR"
 LOOK="orange_teal"; TEXTURE="normal"; TRANSI="coupe"
-SEG="6"; MVOL="-19"; SUBSZ="112"; SUBW="3"
+SEG="6"; MVOL="-19"; SUBSZ="112"; SUBW="3"; XF="0.40"; ANIM="pop"; FOND=""; BRUME="0.25"
 FILIGRANE="1"; CRF="19"; NOSUBS=0; NOBRAND=0; REFAIRE=0
 
-while getopts "a:m:b:s:o:d:l:x:T:p:v:f:w:k:q:NIRh" opt; do
+while getopts "a:m:b:s:o:d:l:x:T:p:v:f:w:k:q:D:A:B:F:NIRh" opt; do
   case "$opt" in
     a) AUDIO="$OPTARG" ;;   m) MUSIQUE="$OPTARG" ;;  b) BROLL="$OPTARG" ;;
     s) SCRIPT="$OPTARG" ;;  o) SORTIE="$OPTARG" ;;   d) DUREE="$OPTARG" ;;
     l) LOOK="$OPTARG" ;;    x) TEXTURE="$OPTARG" ;;  T) TRANSI="$OPTARG" ;;
     p) SEG="$OPTARG" ;;     v) MVOL="$OPTARG" ;;     f) SUBSZ="$OPTARG" ;;
     w) SUBW="$OPTARG" ;;    k) FILIGRANE="$OPTARG" ;; q) CRF="$OPTARG" ;;
+    D) XF="$OPTARG" ;;      A) ANIM="$OPTARG" ;;     B) FOND="$OPTARG" ;;
+    F) BRUME="$OPTARG" ;;
     N) NOSUBS=1 ;;          I) NOBRAND=1 ;;          R) REFAIRE=1 ;;
     h) usage; exit 0 ;;     *) usage; exit 1 ;;
   esac
@@ -93,6 +104,32 @@ fi
 NSEG=$(awk -v d="$DUREE" -v s="$SEG" 'BEGIN{printf "%d", (d/s)+0.999}')
 [ "$NSEG" -lt 1 ] && NSEG=1
 
+XFADE=""
+case "$TRANSI" in
+  coupe|flash|noir|fondu) ;;
+  enchaine)    XFADE="fade" ;;      zoom)   XFADE="zoomin" ;;
+  flou)        XFADE="hblur" ;;     glisse) XFADE="slideleft" ;;
+  dissolution) XFADE="dissolve" ;;  pixel)  XFADE="pixelize" ;;
+  lumiere)     XFADE="fadewhite" ;; ombre)  XFADE="fadeblack" ;;
+  radial)      XFADE="radial" ;;    volet)  XFADE="smoothleft" ;;
+  rideau)      XFADE="wipeleft" ;;
+  *) TRANSI="coupe" ;;
+esac
+# Un raccord a recouvrement mange XF secondes a chaque jointure : il faut
+# donc plus de plans pour couvrir la meme duree.
+if [ -n "$XFADE" ]; then
+  XF=$(awk -v x="$XF" -v s="$SEG" 'BEGIN{m=s*0.45; printf "%.3f", (x>m)?m:x}')
+  NSEG=$(awk -v d="$DUREE" -v s="$SEG" -v x="$XF" 'BEGIN{printf "%d", ((d-x)/(s-x))+0.999}')
+  [ "$NSEG" -lt 2 ] && NSEG=2
+  if [ "$NSEG" -gt 70 ]; then
+    warn "$NSEG plans a enchainer : trop pour la memoire. Je repasse en coupe franche."
+    hint "Pour garder « $TRANSI », allonge les plans :  -p 9"
+    XFADE=""; TRANSI="coupe"
+  fi
+fi
+
+
+
 ok "$NP source(s) de plans  ->  $NSEG plans de ${SEG}s"
 ok "voix : $(mz_hms "$VDUR")   |   video : $(mz_hms "$DUREE")"
 [ -n "$MUSIQUE" ] && ok "musique : $(basename "$MUSIQUE") a ${MVOL} dB"
@@ -103,7 +140,12 @@ awk -v v="$VDUR" -v d="$DUREE" 'BEGIN{
 
 # L'empreinte couvre tout ce qui change l'image d'un plan. Deux videos aux
 # reglages differents ne peuvent donc pas se voler leurs plans en cache.
-CLE=$( { printf '%s|%s|%s|%s|%s|%sx%s@%s\n' "$LOOK" "$TEXTURE" "$TRANSI" "$SEG" "$DUREE" "$MZ_W" "$MZ_H" "$MZ_FPS"
+ATMO="$MZ_ROOT/assets/overlays/brume.jpg"
+if awk -v b="$BRUME" 'BEGIN{exit !(b>0)}' && [ ! -f "$ATMO" ]; then
+  mkdir -p "$(dirname "$ATMO")"
+  python3 "$MZ_TOOLS/make_backdrop.py" --atmosphere "$ATMO" >/dev/null 2>&1 || BRUME=0
+fi
+CLE=$( { printf '%s|%s|%s|%s|%s|%s|%s|%sx%s@%s\n' "$LOOK" "$TEXTURE" "$TRANSI" "$XF" "$SEG" "$BRUME" "$DUREE" "$MZ_W" "$MZ_H" "$MZ_FPS"
          printf '%s\n' "${PLANS[@]}"; } | cksum | cut -d' ' -f1)
 CACHE="${MZ_CACHE:-$MZ_ROOT/projet/.cache/$CLE}"
 mkdir -p "$CACHE/plans" "$MZ_ROOT/projet/04-rendu"
@@ -114,7 +156,11 @@ GRADE=$(mz_grade "$LOOK")
 TEXT=$(mz_fx_texture "$TEXTURE")
 hint "look : $LOOK — $(mz_look_desc "$LOOK")"
 
-case "$TRANSI" in coupe|flash|noir|fondu) ;; *) TRANSI="coupe" ;; esac
+
+GRADE=$(mz_grade "$LOOK")
+TEXT=$(mz_fx_texture "$TEXTURE")
+hint "look : $LOOK — $(mz_look_desc "$LOOK")"
+
 
 # ---------------------------------------------------------------
 step "1/5  Fabrication des $NSEG plans (etalonnage $LOOK, texture $TEXTURE)"
@@ -182,9 +228,19 @@ case "$TRANSI" in
   fondu) INFADE=",fade=t=in:st=0:d=0.16:color=black" ;;
 esac
 
-ffmpeg -y -v error "${INARGS[@]}" -filter_complex "
+ATMOIN=(); ATMOFX=""
+if awk -v b="${BRUME:-0}" 'BEGIN{exit !(b>0)}' && [ -f "${ATMO:-}" ]; then
+  ATMOIN=(-loop 1 -framerate "$MZ_FPS" -t "$SEG" -i "$ATMO")
+  # la nappe derive lentement : deux periodes premieres entre elles, pour
+  # que le motif ne se repete jamais a l'identique
+  DX=$(( 17 + (k * 7) % 13 )); DY=$(( 23 + (k * 11) % 19 ))
+  ATMOFX="[1:v]scale=2600:-1,format=gbrp,crop=${MZ_W}:${MZ_H}:x='(iw-${MZ_W})*(0.5+0.45*sin(2*PI*t/${DX}))':y='(ih-${MZ_H})*(0.5+0.45*cos(2*PI*t/${DY}))'[atmo];"
+fi
+
+ffmpeg -y -v error "${INARGS[@]}" "${ATMOIN[@]}" -filter_complex "
 [0:v]${PREP},${PUNCH},${GRADE},format=gbrp[pre];
-$(mz_fx_halation pre lit 0.36);
+$(mz_fx_halation pre lit0 0.36);
+${ATMOFX}$( [ -n "$ATMOFX" ] && echo "[lit0][atmo]blend=all_mode=softlight:all_opacity=${BRUME}[lit];" || echo "[lit0]null[lit];" )
 [lit]${TEXT}${INFADE}${OUTFADE},format=yuv420p,setsar=1[out]" \
   -map "[out]" -an -t "$SEG" \
   -c:v libx264 -preset veryfast -crf 16 -pix_fmt yuv420p -r "$MZ_FPS" \
@@ -195,7 +251,7 @@ EOSEG
 chmod +x "$CACHE/render_seg.sh"
 
 printf '%s\n' "${PLANS[@]}" > "$CACHE/liste.txt"
-export MZ_ROOT CACHE SEG GRADE TEXT TRANSI MZ_W MZ_H MZ_FPS
+export MZ_ROOT CACHE SEG GRADE TEXT TRANSI MZ_W MZ_H MZ_FPS BRUME ATMO
 
 DEJA=$(find "$CACHE/plans" -name '*.mp4' 2>/dev/null | wc -l)
 [ "$DEJA" -gt 0 ] && hint "$DEJA plan(s) deja en cache — reutilises (-R pour tout refaire)"
@@ -215,8 +271,24 @@ step "2/5  Montage"
 for ((k=0; k<NSEG; k++)); do
   printf "file '%s'\n" "$CACHE/plans/$(printf '%04d' "$k").mp4" >> "$CACHE/concat.txt"
 done
-mz_ff "Assemblage" ffmpeg -y -v error -f concat -safe 0 -i "$CACHE/concat.txt" \
-  -c copy -t "$DUREE" "$CACHE/base.mp4" || die "Assemblage impossible"
+if [ -n "$XFADE" ]; then
+  say "raccords « $TRANSI » de ${XF}s sur $((NSEG-1)) jointures…"
+  XIN=(); XG=""; XPREC="0:v"; XCUM=0
+  for ((k=0; k<NSEG; k++)); do XIN+=(-i "$CACHE/plans/$(printf '%04d' "$k").mp4"); done
+  for ((k=1; k<NSEG; k++)); do
+    XCUM=$(awk -v c="$XCUM" -v s="$SEG" -v x="$XF" 'BEGIN{printf "%.3f", c+s-x}')
+    XO="xf$k"; [ "$k" -eq $((NSEG-1)) ] && XO="xout"
+    XG+="[$XPREC][${k}:v]xfade=transition=${XFADE}:duration=${XF}:offset=${XCUM}[$XO];"
+    XPREC="$XO"
+  done
+  XG="${XG%;}"
+  mz_ff "Enchainement" ffmpeg -y -v error "${XIN[@]}" -filter_complex "$XG" \
+    -map "[xout]" -an -t "$DUREE" -c:v libx264 -preset veryfast -crf 16 \
+    -pix_fmt yuv420p -r "$MZ_FPS" "$CACHE/base.mp4" || die "Enchainement impossible"
+else
+  mz_ff "Assemblage" ffmpeg -y -v error -f concat -safe 0 -i "$CACHE/concat.txt" \
+    -c copy -t "$DUREE" "$CACHE/base.mp4" || die "Assemblage impossible"
+fi
 ok "sequence de $(mz_hms "$(mz_duration "$CACHE/base.mp4")")"
 
 # ---------------------------------------------------------------
@@ -229,8 +301,10 @@ if [ "$NOSUBS" = "0" ] && [ -f "$SCRIPT" ] && [ -s "$SCRIPT" ]; then
                  hint "sous-titres tires de la transcription (deja cales)" ;;
     *)           SRCARG=(--text "$SCRIPT" --audio "$AUDIO") ;;
   esac
+  SUBOPT=(--anim "$ANIM")
+  [ -n "$FOND" ] && SUBOPT+=(--fond "$FOND")
   python3 "$MZ_TOOLS/make_captions.py" "${SRCARG[@]}" --out "$SUBFILE" \
-     --duration "$DUREE" --words "$SUBW" --size "$SUBSZ" \
+     --duration "$DUREE" --words "$SUBW" --size "$SUBSZ" "${SUBOPT[@]}" \
      --font "$(mz_font_display)" --W "$MZ_W" --H "$MZ_H" || die "Sous-titres impossibles"
 else
   [ "$NOSUBS" = "1" ] && hint "sous-titres desactives (-N)" \
