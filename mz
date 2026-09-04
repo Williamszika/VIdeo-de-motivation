@@ -52,6 +52,7 @@ ${C_S}C. Une longue video a decouper en serie${C_0}
 
 ${C_S}OUTILS${C_0}
 
+  ${C_B}mz affiche${C_0} <photo>       Photo -> visuel vertical signe
   ${C_B}mz analyser${C_0} <video>      Repere les passages nets d'un rush
   ${C_B}mz montage${C_0} -i <video>    Monte un rush : recadre, etalonne, signe
   ${C_B}mz plans${C_0}                 Verifie tes images et clips
@@ -244,6 +245,7 @@ case "$CMD" in
   montage)   bash "$MZ_ROOT/bin/mz-montage.sh" "$@" ;;
   projet)    python3 "$MZ_TOOLS/monteur.py" "$@" ;;
   analyser)  python3 "$MZ_TOOLS/analyser.py" "$@" ;;
+  affiche)   python3 "$MZ_TOOLS/affiche.py" "$@" ;;
   prompts)   bash "$MZ_ROOT/bin/mz-images.sh" -P "$@" ;;
   brand)     bash "$MZ_ROOT/bin/mz-brand.sh" "$@" ;;
   build)     bash "$MZ_ROOT/bin/mz-build.sh" "$@" ;;
