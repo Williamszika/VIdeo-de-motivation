@@ -129,3 +129,55 @@ un seul enregistrement.
 - [ ] Les trois premières secondes donnent envie de rester
 - [ ] Signature Mr ZIKA visible à la fin
 - [ ] Droits vérifiés sur la voix, la musique et les images
+
+---
+
+## 9. Vérifier un fichier avant de le publier
+
+Aucune clé, aucun réseau, aucun coût : le studio lit ton fichier et le
+compare aux exigences de la plateforme.
+
+```bash
+./mz verifier ma-video.mp4                 # TikTok par défaut
+./mz verifier ma-video.mp4 --pour shorts   # YouTube Shorts
+./mz specs                                 # toutes les références
+./mz specs tiktok                          # une seule plateforme
+```
+
+```
+  ✔ definition             1080x1920
+  ✔ espace couleur         yuv420p                    yuv420p obligatoire
+  ✔ faststart              actif                      lecture immediate
+  ✔ volume                 -13.8 LUFS                 cible -14
+  ✔ crete vraie            -9.2 dBTP                  sous -1,0 dBTP : marge contre AAC
+
+  Conforme. Publiable tel quel sur TikTok.
+```
+
+Il renvoie **1** en cas de problème bloquant : tu peux l'enchaîner dans un
+script.
+
+### Les trois pièges qu'il attrape
+
+**`yuv444p` au lieu de `yuv420p`.** Le fichier se lit chez toi et reste noir
+chez la moitié des gens. C'est l'erreur la plus coûteuse parce qu'elle ne se
+voit pas sur ta machine.
+
+**`faststart` absent.** L'index est écrit en fin de fichier : la lecture ne
+démarre qu'une fois tout téléchargé. Sur un format où l'on juge en une
+seconde, c'est fatal.
+
+**Volume hors cible.** Les plateformes **renormalisent**. Livrer à −9 LUFS ne
+rend pas plus fort : elles baissent. Livrer à −20 et elles montent, en
+remontant le bruit de fond avec.
+
+### Pourquoi c'est en dur et hors ligne
+
+Ce sont des chiffres fixes et de la géométrie. Les zones d'interface sont des
+**fractions de l'image** — elles ne dépendent ni du téléphone ni de la
+définition. Le calcul du LUFS est une norme (EBU R128). Rien de tout ça ne
+justifie un appel réseau facturé au token.
+
+Les limites des plateformes, elles, bougent. `mz specs` affiche la date de
+dernière vérification et le lien officiel : contrôle à la source avant une
+grosse production.

@@ -55,6 +55,8 @@ ${C_S}OUTILS${C_0}
   ${C_B}mz affiche${C_0} <photo>       Photo -> visuel vertical signe
   ${C_B}mz analyser${C_0} <video>      Repere les passages nets d'un rush
   ${C_B}mz montage${C_0} -i <video>    Monte un rush : recadre, etalonne, signe
+  ${C_B}mz specs${C_0}                 Formats, codecs, volume, zones a eviter
+  ${C_B}mz verifier${C_0} <video>      Controle un fichier avant publication
   ${C_B}mz plans${C_0}                 Verifie tes images et clips
   ${C_B}mz looks${C_0}                 Liste les etalonnages
   ${C_B}mz ambiances${C_0}             Liste les ambiances de fond
@@ -246,6 +248,8 @@ case "$CMD" in
   projet)    python3 "$MZ_TOOLS/monteur.py" "$@" ;;
   analyser)  python3 "$MZ_TOOLS/analyser.py" "$@" ;;
   affiche)   python3 "$MZ_TOOLS/affiche.py" "$@" ;;
+  specs)     python3 "$MZ_TOOLS/specs.py" "$@" ;;
+  verifier)  python3 "$MZ_TOOLS/specs.py" --verifier "$@" ;;
   prompts)   bash "$MZ_ROOT/bin/mz-images.sh" -P "$@" ;;
   brand)     bash "$MZ_ROOT/bin/mz-brand.sh" "$@" ;;
   build)     bash "$MZ_ROOT/bin/mz-build.sh" "$@" ;;
